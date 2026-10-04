@@ -1,8 +1,5 @@
-import { createTestApp, type TestApp } from './helpers/test-app.js';
+import { createTestApp, rows, type TestApp } from './helpers/test-app.js';
 import { type Person, workspaceHelpers } from './helpers/workspace.js';
-
-/** The `data` array of a paginated response, typed for the assertion at hand. */
-const rows = <T>(res: { body: unknown }) => (res.body as { data: T[] }).data;
 
 describe('contacts (e2e)', () => {
   let t: TestApp;

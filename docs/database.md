@@ -74,9 +74,25 @@ Search uses `pg_trgm` GIN indexes on `name` and `email`, so `ILIKE '%marc%'`
 stays an index scan as the table grows. Lists are keyset-paginated on the
 UUIDv7 id, newest first.
 
+## Products and orders
+
+| Table       | Notes                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Product`   | Price in integer cents with an ISO currency per row. Unique SKU per workspace. Archived products cannot be ordered.                                                 |
+| `Order`     | `number` is what customers quote ("#10482"), sequential per workspace and unique on `(organizationId, number)`. Deleting a contact keeps their orders (`SET NULL`). |
+| `OrderItem` | Name, SKU and unit price are copied from the product when the order is placed, so catalogue edits never rewrite past orders.                                        |
+
+**Order numbers.** The next number is `max + 1` inside the creating transaction.
+Two orders created at the same instant can pick the same number; the unique index
+rejects one and the service retries with the next number. That keeps numbers
+gap-free without a separate counter row that every order would lock.
+
+**Revenue.** "Spent" counts paid, fulfilled, shipped and delivered orders only.
+Refunded and cancelled orders still appear in the order count.
+
 ## Seed data
 
 `npm run db:seed` creates the **Northstar Coffee** demo workspace: seven members
 across all six system roles, two teams, and 24 customers, wholesale accounts and
-leads with tags and notes. Every demo user signs in with `northstar-demo`. It is idempotent and refuses to run
+leads with tags and notes, a 12-product catalogue and 32 orders (#10455 to #10486). Every demo user signs in with `northstar-demo`. It is idempotent and refuses to run
 with `NODE_ENV=production`.

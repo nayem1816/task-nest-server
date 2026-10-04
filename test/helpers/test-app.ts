@@ -73,3 +73,6 @@ export function refreshCookie(setCookie: string | string[] | undefined): string 
   if (!match) throw new Error('No tn_refresh cookie in response');
   return match;
 }
+
+/** The `data` array of a paginated response, typed for the assertion at hand. */
+export const rows = <T>(res: { body: unknown }) => (res.body as { data: T[] }).data;

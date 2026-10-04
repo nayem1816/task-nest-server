@@ -118,6 +118,8 @@ model Organization {
   auditLogs   AuditLog[]
   contacts    Contact[]
   tags        Tag[]
+  products    Product[]
+  orders      Order[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -280,6 +282,7 @@ model Contact {
   tags         ContactTag[]
   notes        ContactNote[]
   activities   ContactActivity[]
+  orders       Order[]
 
   /// An email belongs to at most one contact per workspace; NULLs do not collide.
   @@unique([organizationId, email])
@@ -374,4 +377,95 @@ model ContactActivity {
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([contactId, id(sort: Desc)])
+}
+
+// ─── Commerce ────────────────────────────────────────────────────────────────
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// What the business sells. Money is stored in minor units (cents) to avoid
+/// floating point; the currency is per row so a catalogue can be multi-currency.
+model Product {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @db.Uuid
+  name           String
+  sku            String?
+  description    String?
+  category       String?
+  priceCents     Int
+  currency       String        @default("USD") @db.Char(3)
+  /// Null when stock is not tracked.
+  stockQuantity  Int?
+  status         ProductStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId, status])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_name_trgm_idx")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id                String      @id @default(uuid(7)) @db.Uuid
+  organizationId    String      @db.Uuid
+  contactId         String?     @db.Uuid
+  /// What customers quote ("#10482"). Sequential per workspace.
+  number            Int
+  status            OrderStatus @default(PENDING)
+  currency          String      @default("USD") @db.Char(3)
+  subtotalCents     Int
+  shippingCents     Int         @default(0)
+  totalCents        Int
+  shippingAddress   String?
+  carrier           String?
+  trackingNumber    String?
+  estimatedDelivery DateTime?   @db.Date
+  placedAt          DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// SetNull: deleting a contact keeps the order for the books.
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, placedAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@index([contactId])
+}
+
+/// A line on an order. Name, SKU and price are copied from the product at the
+/// time of sale, so later catalogue edits do not rewrite past orders.
+model OrderItem {
+  id             String  @id @default(uuid(7)) @db.Uuid
+  orderId        String  @db.Uuid
+  productId      String? @db.Uuid
+  name           String
+  sku            String?
+  unitPriceCents Int
+  quantity       Int
+  totalCents     Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
 }
