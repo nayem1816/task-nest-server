@@ -10,6 +10,7 @@ import { HttpExceptionFilter } from './common/http/http-exception.filter.js';
 import { REQUEST_ID_HEADER } from './common/http/request-id.js';
 import type { Env } from './config/env.js';
 import { CSRF_HEADER, REFRESH_COOKIE } from './modules/auth/refresh-cookie.js';
+import { ORGANIZATION_HEADER } from './modules/authorization/tenant.decorators.js';
 
 /**
  * Everything that shapes the HTTP surface lives here, so the e2e suite boots
@@ -45,7 +46,13 @@ export async function configureApp(app: INestApplication): Promise<void> {
       ...config.get('CORS_ORIGINS', { infer: true }),
     ],
     credentials: true,
-    allowedHeaders: ['content-type', 'authorization', CSRF_HEADER, REQUEST_ID_HEADER],
+    allowedHeaders: [
+      'content-type',
+      'authorization',
+      CSRF_HEADER,
+      REQUEST_ID_HEADER,
+      ORGANIZATION_HEADER,
+    ],
     exposedHeaders: [REQUEST_ID_HEADER],
   });
   app.enableShutdownHooks();
