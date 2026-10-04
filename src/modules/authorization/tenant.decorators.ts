@@ -1,4 +1,10 @@
-import { createParamDecorator, type ExecutionContext, SetMetadata } from '@nestjs/common';
+import {
+  applyDecorators,
+  createParamDecorator,
+  type ExecutionContext,
+  SetMetadata,
+} from '@nestjs/common';
+import { ApiForbiddenResponse, ApiSecurity } from '@nestjs/swagger';
 import type { Request } from 'express';
 import type { Permission } from './permissions.js';
 
@@ -14,13 +20,24 @@ export interface TenantContext {
   permissions: ReadonlySet<Permission>;
 }
 
+/** Name of the OpenAPI security scheme that documents the workspace header. */
+export const WORKSPACE_SECURITY = 'workspace';
+
 /**
  * Marks a route as acting inside one organization. The guard resolves the
  * organization from the `x-organization-id` header, checks the caller is an
  * active member, and that their role grants every listed permission.
  */
 export const RequirePermissions = (...permissions: Permission[]) =>
-  SetMetadata(TENANT_METADATA, permissions);
+  applyDecorators(
+    SetMetadata(TENANT_METADATA, permissions),
+    ApiSecurity(WORKSPACE_SECURITY),
+    ApiForbiddenResponse({
+      description:
+        '`ORGANIZATION_ACCESS_DENIED`, or `PERMISSION_DENIED` when the role lacks: ' +
+        (permissions.length ? permissions.map((p) => `\`${p}\``).join(', ') : 'nothing extra'),
+    }),
+  );
 
 /** The organization, membership and role the request is acting as. */
 export const CurrentTenant = createParamDecorator((_: unknown, ctx: ExecutionContext) => {
