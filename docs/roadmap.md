@@ -11,7 +11,7 @@ Built phase by phase. Each phase lands as its own branch and pull request into
 | 3   | Organizations, RBAC, audit   | Done    |
 | 4   | Design system and app shell  | Done    |
 | 5   | Contacts                     | Done    |
-| 6   | Products and orders          | Planned |
+| 6   | Products and orders          | Done    |
 | 7   | Inbox                        | Planned |
 | 8   | Real-time                    | Planned |
 | 9   | Website chat widget          | Planned |
