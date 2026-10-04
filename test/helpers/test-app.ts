@@ -45,7 +45,9 @@ export async function createTestApp(): Promise<TestApp> {
 
   const app = moduleRef.createNestApplication<INestApplication<App>>({ bufferLogs: true });
   await configureApp(app);
-  await app.init();
+  // Listen once for the whole suite. Otherwise supertest starts and stops the
+  // server per request, and a request built while another one runs loses it.
+  await app.listen(0);
 
   const redis = app.get<Redis>(REDIS);
   return {

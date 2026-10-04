@@ -33,9 +33,10 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  memberships   OrganizationMember[]
-  sessions      Session[]
-  accountTokens AccountToken[]
+  memberships     OrganizationMember[]
+  sessions        Session[]
+  accountTokens   AccountToken[]
+  invitationsSent Invitation[]
 }
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
@@ -110,9 +111,11 @@ model Organization {
   /// Soft delete: data is retained for the grace period, then purged by a job.
   deletedAt    DateTime?
 
-  roles   Role[]
-  members OrganizationMember[]
-  teams   Team[]
+  roles       Role[]
+  members     OrganizationMember[]
+  teams       Team[]
+  invitations Invitation[]
+  auditLogs   AuditLog[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -132,6 +135,7 @@ model Role {
 
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members      OrganizationMember[]
+  invitations  Invitation[]
 
   @@unique([organizationId, key])
 }
@@ -187,4 +191,58 @@ model TeamMember {
 
   @@id([teamId, memberId])
   @@index([memberId])
+}
+
+/// An emailed invitation to join an organization. Accepting it requires
+/// signing in with the invited address.
+model Invitation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  email          String    @db.Citext
+  roleId         String    @db.Uuid
+  invitedById    String?   @db.Uuid
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, email])
+}
+
+// ─── Audit ───────────────────────────────────────────────────────────────────
+
+enum ActorType {
+  USER
+  SYSTEM
+  AI
+  API_KEY
+}
+
+/// Append-only record of who changed what. Rows are never updated; the actor is
+/// kept as an id plus a display snapshot so the entry still reads correctly
+/// after the user is renamed or removed.
+model AuditLog {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  actorType      ActorType
+  actorId        String?   @db.Uuid
+  actorLabel     String?
+  /// Dotted verb, e.g. "member.role_changed".
+  action         String
+  entityType     String
+  entityId       String?
+  ip             String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
 }

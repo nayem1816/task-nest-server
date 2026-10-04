@@ -148,3 +148,27 @@ method today and OAuth planned behind the same session layer, the guard is about
 
 **Cost.** OAuth providers will need their own callback handling rather than an
 off-the-shelf strategy. The session layer they end in stays the same.
+
+---
+
+## ADR-010: The workspace is chosen per request by header, authorized by membership
+
+**Decision.** Tenant routes read the organization from an `x-organization-id`
+header. A global guard resolves the caller's membership for that organization on
+every request and attaches the role's permissions.
+
+**Why.** A user can belong to several workspaces and have two open in different
+tabs. Putting the organization in the access token would mean re-issuing tokens
+on every switch and would let a role change linger until the token expires.
+Looking up the membership per request (one indexed query on a unique key)
+means removing someone or changing their role takes effect on their next
+request.
+
+**Rejected.** Organization in the URL path (`/orgs/:id/members`): equivalent
+security, but noisier routes and every client call needs the id threaded
+through. Postgres row-level security as the primary control: worth adding as a
+second layer later, but it needs a per-transaction `SET` with Prisma's pooled
+connections and does not replace permission checks.
+
+**Cost.** One extra query per tenant request. If it shows up in profiles, the
+membership can be cached in Redis for a few seconds and invalidated on change.

@@ -15,7 +15,10 @@ class MailWorkerModule {}
 @Module({
   imports: [
     BullModule.registerQueue({ name: MAIL_QUEUE }),
-    ConditionalModule.registerWhen(MailWorkerModule, (env) => env.WORKERS_ENABLED !== 'false'),
+    // Generous timeout: on a cold start the config can take a few seconds to load.
+    ConditionalModule.registerWhen(MailWorkerModule, (env) => env.WORKERS_ENABLED !== 'false', {
+      timeout: 20_000,
+    }),
   ],
   providers: [MailService],
   exports: [MailService],

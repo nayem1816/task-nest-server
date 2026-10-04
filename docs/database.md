@@ -50,6 +50,16 @@ not by a foreign key.
 
 Constraints the code relies on are covered by `test/tenancy-schema.e2e-spec.ts`.
 
+## Invitations and audit
+
+| Table        | Notes                                                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Invitation` | Token stored hashed. Pending = not accepted, not revoked, not expired. Re-inviting an address revokes its pending invitation.                        |
+| `AuditLog`   | Append-only. Indexed on `(organizationId, createdAt DESC)` for the log view and on `(organizationId, entityType, entityId)` for an entity's history. |
+
+Accepting an invitation is a conditional `UPDATE ... WHERE acceptedAt IS NULL`,
+so a double-click cannot create two memberships.
+
 ## Seed data
 
 `npm run db:seed` creates the **Northstar Coffee** demo workspace: seven members

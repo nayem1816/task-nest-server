@@ -8,7 +8,7 @@ Built phase by phase. Each phase lands as its own branch and pull request into
 | 0   | Foundation                   | Done    |
 | 1   | Core schema                  | Done    |
 | 2   | Authentication               | Planned |
-| 3   | Organizations, RBAC, audit   | Planned |
+| 3   | Organizations, RBAC, audit   | Done    |
 | 4   | Design system and app shell  | Planned |
 | 5   | Contacts                     | Planned |
 | 6   | Products and orders          | Planned |

@@ -70,6 +70,41 @@ Rules that keep the monolith modular:
 - Every response carries `x-request-id`. An upstream id is reused only if it
   matches `[A-Za-z0-9._-]{8,64}`; anything else is replaced.
 
+## Tenancy and authorization
+
+Every request passes three global guards, in this order:
+
+1. **Rate limit**: counted in Redis per client address (and per address + email
+   on routes that take an email).
+2. **Access token**: every route needs a valid bearer token unless it is marked
+   `@Public()`. A forgotten decorator fails closed.
+3. **Tenant**: routes marked `@RequirePermissions(...)` act inside one
+   organization.
+
+The client chooses the organization with the `x-organization-id` header, but the
+header is only a selector. The guard looks up the membership for the
+authenticated user and that organization, and rejects the request unless it is
+active and its role grants every required permission. Services receive the
+resolved context (`@CurrentTenant()` / `@Actor()`) and never read the header
+or trust an organization id from a request body.
+
+"Not a member" and "no such organization" return the same `403
+ORGANIZATION_ACCESS_DENIED`, so other tenants' ids cannot be probed. Records are
+loaded with `organizationId` in the `where` clause, so an id from another
+tenant is a `404`, never someone else's data.
+
+Collections that can grow (the audit log) are paginated with a cursor and
+return `{ data, nextCursor }`. Small bounded collections (roles, teams,
+sessions) return a plain array.
+
+## Audit log
+
+Changes that matter to an admin (roles, membership, invitations, teams,
+workspace settings) write an `AuditLog` row in the same transaction as the
+change, so an entry exists exactly when the change committed. The actor is
+stored as an id plus a name snapshot, so old entries still read correctly after
+someone is renamed or removed. Entries are never updated.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.
