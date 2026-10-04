@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [citext, vector]
+  extensions = [citext, vector, pg_trgm]
 }
 
 // ─── Identity ────────────────────────────────────────────────────────────────
@@ -116,6 +116,8 @@ model Organization {
   teams       Team[]
   invitations Invitation[]
   auditLogs   AuditLog[]
+  contacts    Contact[]
+  tags        Tag[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -156,11 +158,12 @@ model OrganizationMember {
   joinedAt       DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Restrict: a role cannot be deleted while members still hold it.
-  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
   teams        TeamMember[]
+  contactNotes ContactNote[]
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -245,4 +248,130 @@ model AuditLog {
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, entityType, entityId])
+}
+
+// ─── Contacts ────────────────────────────────────────────────────────────────
+
+enum LifecycleStage {
+  VISITOR
+  LEAD
+  CUSTOMER
+}
+
+/// A person the business talks to. One contact can be reached on several
+/// channels; each channel address is a ContactIdentity.
+model Contact {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  name           String?
+  email          String?        @db.Citext
+  phone          String?
+  company        String?
+  /// Free text, e.g. "Austin, TX". Not geocoded.
+  location       String?
+  stage          LifecycleStage @default(VISITOR)
+  /// Last time the contact did something (message, order, visit).
+  lastSeenAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identities   ContactIdentity[]
+  tags         ContactTag[]
+  notes        ContactNote[]
+  activities   ContactActivity[]
+
+  /// An email belongs to at most one contact per workspace; NULLs do not collide.
+  @@unique([organizationId, email])
+  @@index([organizationId, lastSeenAt(sort: Desc)])
+  @@index([organizationId, stage])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Contact_name_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "Contact_email_trgm_idx")
+}
+
+enum ChannelType {
+  EMAIL
+  PHONE
+  WEBSITE_CHAT
+  TELEGRAM
+  WHATSAPP
+  MESSENGER
+  INSTAGRAM
+}
+
+/// How a contact is known on one channel: an email address, a phone number, a
+/// chat visitor id, a Telegram user id. Inbound messages are matched to
+/// contacts through this table.
+model ContactIdentity {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  organizationId String      @db.Uuid
+  contactId      String      @db.Uuid
+  channel        ChannelType
+  externalId     String
+  createdAt      DateTime    @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, channel, externalId])
+  @@index([contactId])
+}
+
+/// Workspace-wide labels, shared by contacts now and conversations later.
+model Tag {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  /// One of a fixed palette of keys ("slate", "blue", ...), not a hex value.
+  color          String   @default("slate")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts     ContactTag[]
+
+  @@unique([organizationId, name])
+}
+
+model ContactTag {
+  contactId String   @db.Uuid
+  tagId     String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+}
+
+model ContactNote {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  contactId      String   @db.Uuid
+  authorId       String?  @db.Uuid
+  body           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contact Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author  OrganizationMember? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([contactId, createdAt(sort: Desc)])
+}
+
+/// The contact's timeline. Other domains (conversations, orders, leads) append
+/// to it, so the contact page can show one history without joining every table.
+model ContactActivity {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  contactId      String   @db.Uuid
+  /// Dotted type, e.g. "contact.created", "note.added", "tag.added".
+  type           String
+  actorId        String?  @db.Uuid
+  actorLabel     String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, id(sort: Desc)])
 }

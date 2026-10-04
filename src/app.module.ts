@@ -10,6 +10,7 @@ import { RedisModule } from './infrastructure/redis/redis.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { AuthorizationModule } from './modules/authorization/authorization.module.js';
+import { ContactsModule } from './modules/contacts/contacts.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { MembersModule } from './modules/members/members.module.js';
@@ -35,6 +36,7 @@ import { TeamsModule } from './modules/teams/teams.module.js';
     MembersModule,
     TeamsModule,
     InvitationsModule,
+    ContactsModule,
   ],
 })
 export class AppModule {}
