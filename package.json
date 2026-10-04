@@ -20,13 +20,15 @@
     "test:watch": "vitest",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate dev && prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "postinstall": "prisma generate",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
@@ -66,6 +68,7 @@
     "prettier": "^3.9.9",
     "prisma": "^7.10.0",
     "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
     "vite-tsconfig-paths": "^6.1.1",

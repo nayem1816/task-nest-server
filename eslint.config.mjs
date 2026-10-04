@@ -36,6 +36,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['prisma/seed/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
+  {
     files: ['*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
