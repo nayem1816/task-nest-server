@@ -31,6 +31,13 @@ const CODE_BY_STATUS: Partial<Record<number, string>> = {
   [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
 };
 
+// Framework exceptions carry developer-facing text ("ThrottlerException: Too
+// Many Requests"). These statuses get wording a customer can act on instead.
+const FRIENDLY_MESSAGE_BY_STATUS: Partial<Record<number, string>> = {
+  [HttpStatus.TOO_MANY_REQUESTS]: 'Too many attempts. Wait a few minutes and try again.',
+  [HttpStatus.PAYLOAD_TOO_LARGE]: 'That upload is too large.',
+};
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: PinoLogger) {
@@ -87,7 +94,12 @@ export function toErrorBody(exception: unknown): { status: number; body: ErrorBo
 
     return {
       status,
-      body: { error: { code: CODE_BY_STATUS[status] ?? 'HTTP_ERROR', message: exception.message } },
+      body: {
+        error: {
+          code: CODE_BY_STATUS[status] ?? 'HTTP_ERROR',
+          message: FRIENDLY_MESSAGE_BY_STATUS[status] ?? exception.message,
+        },
+      },
     };
   }
 

@@ -154,7 +154,7 @@ export class TeamsService {
             action: 'team.members_changed',
             entityType: 'team',
             entityId: team.id,
-            metadata: { added, removed },
+            metadata: { team: team.name, added, removed },
           },
           tx,
         );

@@ -114,6 +114,9 @@ describe('auth (e2e)', () => {
       expect(attempts.slice(0, 10).every((r) => r.status === 401)).toBe(true);
       expect(attempts[10]?.status).toBe(429);
       expect(attempts[10]?.body.error.code).toBe('RATE_LIMITED');
+      expect(attempts[10]?.body.error.message).toBe(
+        'Too many attempts. Wait a few minutes and try again.',
+      );
     });
   });
 
