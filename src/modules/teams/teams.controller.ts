@@ -14,7 +14,6 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
-  ApiHeader,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -23,7 +22,6 @@ import {
 import {
   Actor,
   CurrentTenant,
-  ORGANIZATION_HEADER,
   type RequestActor,
   RequirePermissions,
   type TenantContext,
@@ -33,7 +31,6 @@ import { TeamsService } from './teams.service.js';
 
 @ApiTags('Teams')
 @ApiBearerAuth()
-@ApiHeader({ name: ORGANIZATION_HEADER, required: true })
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teams: TeamsService) {}

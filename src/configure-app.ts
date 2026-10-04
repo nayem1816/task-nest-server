@@ -10,7 +10,10 @@ import { HttpExceptionFilter } from './common/http/http-exception.filter.js';
 import { REQUEST_ID_HEADER } from './common/http/request-id.js';
 import type { Env } from './config/env.js';
 import { CSRF_HEADER, REFRESH_COOKIE } from './modules/auth/refresh-cookie.js';
-import { ORGANIZATION_HEADER } from './modules/authorization/tenant.decorators.js';
+import {
+  ORGANIZATION_HEADER,
+  WORKSPACE_SECURITY,
+} from './modules/authorization/tenant.decorators.js';
 
 /**
  * Everything that shapes the HTTP surface lives here, so the e2e suite boots
@@ -69,6 +72,15 @@ export async function configureApp(app: INestApplication): Promise<void> {
         .setVersion('1')
         .addBearerAuth()
         .addCookieAuth(REFRESH_COOKIE)
+        .addApiKey(
+          {
+            type: 'apiKey',
+            in: 'header',
+            name: ORGANIZATION_HEADER,
+            description: 'Id of the workspace to act in. Required on workspace routes.',
+          },
+          WORKSPACE_SECURITY,
+        )
         .build(),
     );
     SwaggerModule.setup('api/docs', app, document, { jsonDocumentUrl: 'api/docs/openapi.json' });

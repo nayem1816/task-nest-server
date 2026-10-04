@@ -1,30 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { isPermission, PERMISSIONS } from './permissions.js';
+import { PermissionDto, RoleDto } from './roles.dto.js';
 import { SYSTEM_ROLES } from './system-roles.js';
-import {
-  CurrentTenant,
-  ORGANIZATION_HEADER,
-  RequirePermissions,
-  type TenantContext,
-} from './tenant.decorators.js';
-
-class RoleDto {
-  id!: string;
-  key!: string;
-  name!: string;
-  description!: string | null;
-  isSystem!: boolean;
-  permissions!: string[];
-  memberCount!: number;
-}
-
-class PermissionDto {
-  /** @example "conversation.reply" */
-  key!: string;
-  description!: string;
-}
+import { CurrentTenant, RequirePermissions, type TenantContext } from './tenant.decorators.js';
 
 @ApiTags('Roles')
 @ApiBearerAuth()
@@ -34,7 +14,6 @@ export class RolesController {
 
   @Get('roles')
   @RequirePermissions('team.read')
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'Roles in this workspace and what each one allows' })
   @ApiOkResponse({ type: [RoleDto] })
   async list(@CurrentTenant() tenant: TenantContext): Promise<RoleDto[]> {

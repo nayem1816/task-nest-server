@@ -2,7 +2,6 @@ import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
-  ApiHeader,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -13,7 +12,6 @@ import { type AuthContext, CurrentAuth } from '../auth/auth.decorators.js';
 import {
   Actor,
   CurrentTenant,
-  ORGANIZATION_HEADER,
   type RequestActor,
   RequirePermissions,
   type TenantContext,
@@ -66,7 +64,6 @@ export class OrganizationsController {
 
   @Get('current')
   @RequirePermissions()
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'The workspace selected by the organization header' })
   @ApiOkResponse({ type: OrganizationDto })
   current(@CurrentTenant() tenant: TenantContext): Promise<OrganizationDto> {
@@ -75,7 +72,6 @@ export class OrganizationsController {
 
   @Patch('current')
   @RequirePermissions('settings.manage')
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'Rename the workspace or change its business type or time zone' })
   @ApiOkResponse({ type: OrganizationDto })
   update(

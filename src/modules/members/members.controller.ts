@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiHeader,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -20,7 +19,6 @@ import {
 import {
   Actor,
   CurrentTenant,
-  ORGANIZATION_HEADER,
   type RequestActor,
   RequirePermissions,
   type TenantContext,
@@ -30,7 +28,6 @@ import { MembersService } from './members.service.js';
 
 @ApiTags('Members')
 @ApiBearerAuth()
-@ApiHeader({ name: ORGANIZATION_HEADER, required: true })
 @Controller('members')
 export class MembersController {
   constructor(private readonly members: MembersService) {}

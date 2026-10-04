@@ -14,7 +14,6 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
-  ApiHeader,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -26,7 +25,6 @@ import { type AuthContext, CurrentAuth, Public } from '../auth/auth.decorators.j
 import {
   Actor,
   CurrentTenant,
-  ORGANIZATION_HEADER,
   type RequestActor,
   RequirePermissions,
   type TenantContext,
@@ -53,7 +51,6 @@ export class InvitationsController {
   @RequirePermissions('team.manage')
   @Throttle({ default: { limit: 30, ttl: 60 * 60_000 } })
   @ApiBearerAuth()
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'Invite someone by email; replaces any pending invitation for them' })
   @ApiCreatedResponse({ type: InvitationDto })
   create(@Actor() actor: RequestActor, @Body() dto: CreateInvitationDto): Promise<InvitationDto> {
@@ -63,7 +60,6 @@ export class InvitationsController {
   @Get()
   @RequirePermissions('team.read')
   @ApiBearerAuth()
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'Invitations that have not been accepted, revoked or expired' })
   @ApiOkResponse({ type: [InvitationDto] })
   list(@CurrentTenant() tenant: TenantContext): Promise<InvitationDto[]> {
@@ -74,7 +70,6 @@ export class InvitationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('team.manage')
   @ApiBearerAuth()
-  @ApiHeader({ name: ORGANIZATION_HEADER, required: true })
   @ApiOperation({ summary: 'Cancel a pending invitation' })
   @ApiNoContentResponse()
   async revoke(
