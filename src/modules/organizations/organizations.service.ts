@@ -91,6 +91,7 @@ export class OrganizationsService {
 
       return {
         ...toOrganizationDto(organization),
+        memberId: member.id,
         role: { key: owner.key, name: owner.name },
         permissions: owner.permissions,
       };
@@ -105,6 +106,7 @@ export class OrganizationsService {
     });
     return memberships.map((m) => ({
       ...toOrganizationDto(m.organization),
+      memberId: m.id,
       role: { key: m.role.key, name: m.role.name },
       permissions: m.role.permissions.filter(isPermission),
     }));

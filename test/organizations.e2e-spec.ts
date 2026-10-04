@@ -42,6 +42,8 @@ describe('organizations, members and access control (e2e)', () => {
         role: { key: 'owner' },
       });
       expect(mine.body[0].permissions).toContain('billing.manage');
+      const members = await as(maya, orgId).get('/api/v1/members').expect(200);
+      expect(mine.body[0].memberId).toBe(members.body[0].id);
 
       const roles = await as(maya, orgId).get('/api/v1/roles').expect(200);
       expect((roles.body as { key: string }[]).map((r) => r.key)).toEqual([
