@@ -52,5 +52,6 @@ instances already running on your machine.
 
 - [Architecture](docs/architecture.md)
 - [Database](docs/database.md)
+- [Security](docs/security.md)
 - [Decisions](docs/decisions.md)
 - [Roadmap](docs/roadmap.md)

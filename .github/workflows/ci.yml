@@ -34,6 +34,8 @@ jobs:
       APP_URL: http://localhost:3100
       DATABASE_URL: postgresql://tasknest:tasknest@localhost:5432/tasknest_test
       REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-only-secret-that-is-long-enough-0001
+      SMTP_URL: smtp://localhost:1025
 
     steps:
       - uses: actions/checkout@v5

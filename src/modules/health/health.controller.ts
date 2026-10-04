@@ -1,7 +1,9 @@
 import { Controller, Get, HttpStatus, Inject, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { Redis } from 'ioredis';
+import { Public } from '../auth/auth.decorators.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { REDIS } from '../../infrastructure/redis/redis.module.js';
 
@@ -10,6 +12,8 @@ type CheckStatus = 'up' | 'down';
 const CHECK_TIMEOUT_MS = 2_000;
 
 @ApiTags('Health')
+@Public()
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(
