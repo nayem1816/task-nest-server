@@ -106,3 +106,23 @@ or Cloudflare R2.
 
 **Why.** MinIO stopped publishing container images. Code talks to storage through
 the S3 protocol only, so the local server is replaceable without code changes.
+
+---
+
+## ADR-008: Permissions are defined in code, roles in the database
+
+**Decision.** The permission catalog is a TypeScript constant
+(`src/modules/authorization/permissions.ts`). Roles are rows per organization and
+store the permission keys they grant as a `text[]`.
+
+**Why.** A permission only means something if a guard checks it, and guards are
+code. Keeping the catalog in code means a typo in a guard is a compile error,
+and a role can never grant a capability the code does not know about. Roles are
+data because tenants will want custom ones.
+
+**Rejected.** `Permission` and `RolePermission` tables. They would need to be
+kept in sync with the code on every deploy and add a join to every
+authorization check, without letting anyone create a permission the code honours.
+
+**Cost.** Renaming or removing a permission needs a data migration over
+`Role.permissions`. Writes to that column are validated against the catalog.

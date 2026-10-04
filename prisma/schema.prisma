@@ -1,10 +1,131 @@
 generator client {
-  provider               = "prisma-client"
-  output                 = "../src/generated/prisma"
-  moduleFormat           = "esm"
-  importFileExtension    = "js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [citext, vector]
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+/// A person who can sign in. Users are global; what they can see is decided by
+/// their memberships, never by the user row itself.
+model User {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  email           String     @unique @db.Citext
+  name            String
+  /// Null for accounts created through OAuth only.
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  avatarUrl       String?
+  status          UserStatus @default(ACTIVE)
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  memberships OrganizationMember[]
+}
+
+// ─── Tenancy ─────────────────────────────────────────────────────────────────
+
+/// The tenant. Every business record hangs off an organization.
+model Organization {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  name         String
+  /// Used in URLs. Unique across all tenants.
+  slug         String    @unique
+  businessType String?
+  timezone     String    @default("UTC")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  /// Soft delete: data is retained for the grace period, then purged by a job.
+  deletedAt    DateTime?
+
+  roles   Role[]
+  members OrganizationMember[]
+  teams   Team[]
+}
+
+/// Roles are per organization so a tenant can add custom ones later. The six
+/// built-in roles are created with every organization and marked `isSystem`.
+model Role {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  /// Stable identifier ("owner", "agent"). Display text lives in `name`.
+  key            String
+  name           String
+  description    String?
+  /// Permission keys from the catalog in src/modules/authorization/permissions.ts.
+  permissions    String[]
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
+
+  @@unique([organizationId, key])
+}
+
+enum MemberStatus {
+  ACTIVE
+  DISABLED
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  roleId         String       @db.Uuid
+  status         MemberStatus @default(ACTIVE)
+  /// Shown to customers when this member replies, if different from the user's name.
+  displayName    String?
+  joinedAt       DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Restrict: a role cannot be deleted while members still hold it.
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  teams        TeamMember[]
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model Team {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+
+  @@unique([organizationId, name])
+}
+
+model TeamMember {
+  teamId    String   @db.Uuid
+  memberId  String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  team   Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  member OrganizationMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, memberId])
+  @@index([memberId])
 }

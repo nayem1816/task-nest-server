@@ -22,6 +22,7 @@ cp .env.example .env
 npm install          # also generates the Prisma client
 npm run infra:up     # Postgres, Redis, object storage, Mailpit
 npm run db:migrate
+npm run db:seed      # Northstar Coffee demo workspace
 npm run dev
 ```
 
@@ -50,5 +51,6 @@ instances already running on your machine.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Database](docs/database.md)
 - [Decisions](docs/decisions.md)
 - [Roadmap](docs/roadmap.md)
