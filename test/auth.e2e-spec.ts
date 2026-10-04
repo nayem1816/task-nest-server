@@ -244,6 +244,35 @@ describe('auth (e2e)', () => {
     });
   });
 
+  describe('client address behind the web proxy', () => {
+    async function loginAndReadIp(headers: Record<string, string>) {
+      const { email } = await signup('proxy');
+      const login = await http()
+        .post('/api/v1/auth/login')
+        .set(headers)
+        .send({ email, password: PASSWORD })
+        .expect(200);
+      const list = await http()
+        .get('/api/v1/auth/sessions')
+        .set('Authorization', `Bearer ${login.body.accessToken}`)
+        .expect(200);
+      return (list.body as { ip: string; current: boolean }[]).find((s) => s.current)?.ip;
+    }
+
+    it('records the forwarded address when the proxy proves itself', async () => {
+      const ip = await loginAndReadIp({
+        'x-tasknest-proxy-secret': process.env.EDGE_PROXY_SECRET!,
+        'x-tasknest-client-ip': '203.0.113.42',
+      });
+      expect(ip).toBe('203.0.113.42');
+    });
+
+    it('ignores a forwarded address sent without the secret', async () => {
+      const ip = await loginAndReadIp({ 'x-tasknest-client-ip': '203.0.113.42' });
+      expect(ip).not.toBe('203.0.113.42');
+    });
+  });
+
   describe('email verification', () => {
     it('verifies once with the emailed token', async () => {
       const { email, accessToken } = await signup('verify');

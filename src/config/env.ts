@@ -23,6 +23,11 @@ const envSchema = z.object({
 
   /** Proxies in front of the API (load balancer, platform router); 0 when exposed directly. */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  /** Shared with the web app's server so it can pass the real client IP. Optional in development. */
+  EDGE_PROXY_SECRET: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(32, 'must be at least 32 characters').optional(),
+  ),
 
   SWAGGER_ENABLED: booleanString.default(false),
   /** Run queue processors in this process. Off for API-only replicas. */

@@ -253,5 +253,5 @@ export class AuthController {
 }
 
 function clientInfo(req: Request) {
-  return { ip: req.ip, userAgent: req.headers['user-agent'] };
+  return { ip: req.clientIp ?? req.ip, userAgent: req.headers['user-agent'] };
 }
