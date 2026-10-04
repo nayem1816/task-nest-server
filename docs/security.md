@@ -82,7 +82,24 @@ block check run in one Lua script.
 
 Keying sensitive routes on IP + email means an office behind one NAT does not
 lock each other out, while a single account still cannot be brute-forced from
-one address. Behind a proxy, set `TRUST_PROXY_HOPS` so `req.ip` is the client.
+one address.
+
+### Which address counts as the client
+
+The web app calls the API through its own server (a Next.js rewrite), so the
+API's socket peer is the web server for every user. Counting by that address
+would put all users in one bucket.
+
+Next.js forwards whatever `X-Forwarded-For` the browser sent, unchanged, so that
+header cannot be trusted either. Instead the web server's proxy sets
+`x-tasknest-client-ip` from the address its hosting platform reports, together
+with `x-tasknest-proxy-secret`. The API uses the forwarded address only when the
+secret matches `EDGE_PROXY_SECRET` (compared in constant time); anything calling
+the API directly is counted by its own address. The secret header is redacted
+from logs.
+
+`TRUST_PROXY_HOPS` is still used for the API's own platform proxy, so that
+`req.ip` is the real peer and not the platform's load balancer.
 
 ## Logging
 

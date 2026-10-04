@@ -14,11 +14,11 @@ import { RedisThrottlerStorage } from './redis-throttler.storage.js';
 @Injectable()
 class TrackerThrottlerGuard extends ThrottlerGuard {
   protected override getTracker(req: Record<string, unknown>): Promise<string> {
-    const { ip } = req as unknown as Request;
+    const { ip, clientIp } = req as unknown as Request;
     const body = (req as { body?: unknown }).body as Record<string, unknown> | undefined;
     const email = body?.email;
     const suffix = typeof email === 'string' ? `:${email.trim().toLowerCase()}` : '';
-    return Promise.resolve(`${ip ?? 'unknown'}${suffix}`);
+    return Promise.resolve(`${clientIp ?? ip ?? 'unknown'}${suffix}`);
   }
 }
 

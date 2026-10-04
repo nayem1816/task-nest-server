@@ -30,6 +30,11 @@ describe('validateEnv', () => {
     );
   });
 
+  it('treats an empty optional secret as unset', () => {
+    expect(validateEnv({ ...base, EDGE_PROXY_SECRET: '' }).EDGE_PROXY_SECRET).toBeUndefined();
+    expect(() => validateEnv({ ...base, EDGE_PROXY_SECRET: 'short' })).toThrow(/EDGE_PROXY_SECRET/);
+  });
+
   it('rejects a database URL with the wrong protocol', () => {
     expect(() => validateEnv({ ...base, DATABASE_URL: 'mysql://u:p@localhost/db' })).toThrow(
       /DATABASE_URL/,

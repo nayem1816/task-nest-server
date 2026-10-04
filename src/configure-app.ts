@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import type { Express } from 'express';
 import helmet from 'helmet';
 import { Logger, PinoLogger } from 'nestjs-pino';
+import { clientIpMiddleware } from './common/http/client-ip.js';
 import { HttpExceptionFilter } from './common/http/http-exception.filter.js';
 import { REQUEST_ID_HEADER } from './common/http/request-id.js';
 import type { Env } from './config/env.js';
@@ -22,6 +23,7 @@ export async function configureApp(app: INestApplication): Promise<void> {
     (app.getHttpAdapter().getInstance() as Express).set('trust proxy', proxyHops);
   }
 
+  app.use(clientIpMiddleware(config.get('EDGE_PROXY_SECRET', { infer: true })));
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
