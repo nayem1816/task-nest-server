@@ -63,6 +63,8 @@ export class OrganizationDto {
 }
 
 export class MyOrganizationDto extends OrganizationDto {
+  /** Your membership in this workspace; matches `id` in the members list. */
+  memberId!: string;
   /** Your role in this workspace. */
   role!: MembershipRoleDto;
   /** Permission keys your role grants, for showing or hiding UI. */
