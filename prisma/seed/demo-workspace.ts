@@ -1,4 +1,6 @@
+import { hash } from '@node-rs/argon2';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { ARGON2_OPTIONS } from '../../src/modules/auth/password.service.js';
 import { SYSTEM_ROLES, type SystemRoleKey } from '../../src/modules/authorization/system-roles.js';
 
 /**
@@ -48,8 +50,12 @@ const TEAMS = [
   { name: 'Wholesale', description: 'Cafés and offices buying in bulk.' },
 ];
 
+/** Shared by every demo user so the workspace can be explored from any role. */
+export const DEMO_PASSWORD = 'northstar-demo';
+
 /** Idempotent: safe to run against a database that already has the workspace. */
 export async function seedDemoWorkspace(prisma: PrismaClient) {
+  const passwordHash = await hash(DEMO_PASSWORD, ARGON2_OPTIONS);
   return prisma.$transaction(async (tx) => {
     const organization = await tx.organization.upsert({
       where: { slug: ORGANIZATION.slug },
@@ -87,8 +93,13 @@ export async function seedDemoWorkspace(prisma: PrismaClient) {
     for (const person of PEOPLE) {
       const user = await tx.user.upsert({
         where: { email: person.email },
-        update: {},
-        create: { email: person.email, name: person.name, emailVerifiedAt: new Date() },
+        update: { passwordHash },
+        create: {
+          email: person.email,
+          name: person.name,
+          passwordHash,
+          emailVerifiedAt: new Date(),
+        },
       });
 
       const member = await tx.organizationMember.upsert({
@@ -110,6 +121,11 @@ export async function seedDemoWorkspace(prisma: PrismaClient) {
       }
     }
 
-    return { organization: organization.name, members: PEOPLE.length, teams: TEAMS.length };
+    return {
+      organizationId: organization.id,
+      organization: organization.name,
+      members: PEOPLE.length,
+      teams: TEAMS.length,
+    };
   });
 }
