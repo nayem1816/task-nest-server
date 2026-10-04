@@ -1,19 +1,19 @@
-import request from 'supertest';
 import { createTestApp, type TestApp, uniqueEmail } from './helpers/test-app.js';
-
-const PASSWORD = 'correct horse battery';
-
-interface Person {
-  email: string;
-  token: string;
-}
+import { workspaceHelpers } from './helpers/workspace.js';
 
 describe('organizations, members and access control (e2e)', () => {
   let t: TestApp;
-  const http = () => request(t.app.getHttpServer());
+  let h: ReturnType<typeof workspaceHelpers>;
+  const http = () => h.http();
+  const person = (...args: Parameters<typeof h.person>) => h.person(...args);
+  const workspace = (...args: Parameters<typeof h.workspace>) => h.workspace(...args);
+  const as = (...args: Parameters<typeof h.as>) => h.as(...args);
+  const roleId = (...args: Parameters<typeof h.roleId>) => h.roleId(...args);
+  const join = (...args: Parameters<typeof h.join>) => h.join(...args);
 
   beforeAll(async () => {
     t = await createTestApp();
+    h = workspaceHelpers(t);
   });
 
   beforeEach(async () => {
@@ -25,67 +25,6 @@ describe('organizations, members and access control (e2e)', () => {
     await t.prisma.user.deleteMany({ where: { email: { endsWith: '@e2e.test' } } });
     await t.app.close();
   });
-
-  async function person(label: string, name = 'Jordan Ellis'): Promise<Person> {
-    const email = uniqueEmail(label);
-    const res = await http()
-      .post('/api/v1/auth/signup')
-      .send({ name, email, password: PASSWORD })
-      .expect(201);
-    return { email, token: res.body.accessToken as string };
-  }
-
-  async function workspace(owner: Person, name = 'E2E Northstar') {
-    const res = await http()
-      .post('/api/v1/organizations')
-      .set('Authorization', `Bearer ${owner.token}`)
-      .send({ name, businessType: 'ecommerce', timezone: 'America/Chicago' })
-      .expect(201);
-    return res.body.id as string;
-  }
-
-  /** Request helper acting as `who` inside `orgId`. */
-  const as = (who: Person, orgId: string) => ({
-    get: (path: string) =>
-      http().get(path).set('Authorization', `Bearer ${who.token}`).set('x-organization-id', orgId),
-    post: (path: string) =>
-      http().post(path).set('Authorization', `Bearer ${who.token}`).set('x-organization-id', orgId),
-    patch: (path: string) =>
-      http()
-        .patch(path)
-        .set('Authorization', `Bearer ${who.token}`)
-        .set('x-organization-id', orgId),
-    put: (path: string) =>
-      http().put(path).set('Authorization', `Bearer ${who.token}`).set('x-organization-id', orgId),
-    delete: (path: string) =>
-      http()
-        .delete(path)
-        .set('Authorization', `Bearer ${who.token}`)
-        .set('x-organization-id', orgId),
-  });
-
-  async function roleId(who: Person, orgId: string, key: string): Promise<string> {
-    const res = await as(who, orgId).get('/api/v1/roles').expect(200);
-    return (res.body as { id: string; key: string }[]).find((r) => r.key === key)!.id;
-  }
-
-  /** Invites `invitee` as `role` and accepts on their behalf; returns their member id. */
-  async function join(owner: Person, orgId: string, invitee: Person, role: string) {
-    await as(owner, orgId)
-      .post('/api/v1/invitations')
-      .send({ email: invitee.email, roleId: await roleId(owner, orgId, role) })
-      .expect(201);
-    const token = t.outbox.lastToken(invitee.email, 'invitation');
-    await http()
-      .post('/api/v1/invitations/accept')
-      .set('Authorization', `Bearer ${invitee.token}`)
-      .send({ token })
-      .expect(200);
-    const members = await as(owner, orgId).get('/api/v1/members').expect(200);
-    return (members.body as { id: string; user: { email: string } }[]).find(
-      (m) => m.user.email === invitee.email,
-    )!.id;
-  }
 
   describe('creating a workspace', () => {
     it('makes the creator owner, adds the six system roles and logs it', async () => {

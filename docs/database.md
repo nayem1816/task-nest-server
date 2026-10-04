@@ -60,8 +60,23 @@ Constraints the code relies on are covered by `test/tenancy-schema.e2e-spec.ts`.
 Accepting an invitation is a conditional `UPDATE ... WHERE acceptedAt IS NULL`,
 so a double-click cannot create two memberships.
 
+## Contacts
+
+| Table             | Notes                                                                                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Contact`         | Unique `(organizationId, email)`; NULL emails never collide. `stage` is VISITOR, LEAD or CUSTOMER.                                                                                        |
+| `ContactIdentity` | How a contact is known on one channel. Unique `(organizationId, channel, externalId)`, which is what inbound messages are matched on. Kept in step when the email or phone field changes. |
+| `Tag`             | Workspace-wide, unique by name. Colour is a palette key, not a hex value, so the UI controls contrast.                                                                                    |
+| `ContactNote`     | Internal only. Author is a membership and is set to NULL if that person leaves.                                                                                                           |
+| `ContactActivity` | The timeline. Other domains append here in their own transactions instead of the contact page joining every table.                                                                        |
+
+Search uses `pg_trgm` GIN indexes on `name` and `email`, so `ILIKE '%marc%'`
+stays an index scan as the table grows. Lists are keyset-paginated on the
+UUIDv7 id, newest first.
+
 ## Seed data
 
 `npm run db:seed` creates the **Northstar Coffee** demo workspace: seven members
-across all six system roles and two teams. It is idempotent and refuses to run
+across all six system roles, two teams, and 24 customers, wholesale accounts and
+leads with tags and notes. Every demo user signs in with `northstar-demo`. It is idempotent and refuses to run
 with `NODE_ENV=production`.

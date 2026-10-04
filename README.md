@@ -34,6 +34,10 @@ npm run dev
 | Mailpit (email) | http://localhost:8025                     |
 | Storage console | http://localhost:9001/rustfs/console/     |
 
+After seeding, sign in to the web app as `maya@northstarcoffee.co` (owner) with
+the password `northstar-demo`. The other demo people (priya, daniel, tom, lucia,
+sam, erin @northstarcoffee.co) use the same password and cover every role.
+
 Postgres and Redis are published on 5433 and 6380 so they don't clash with
 instances already running on your machine.
 
