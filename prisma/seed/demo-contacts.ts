@@ -317,7 +317,9 @@ export async function seedDemoContacts(prisma: PrismaClient, organizationId: str
         notes: {
           create: (c.notes ?? []).map((note) => {
             const author = memberByEmail.get(note.by);
-            return { organizationId, body: note.body, authorId: author?.id };
+            // Written a couple of hours before the contact was last active.
+            const writtenAt = new Date((lastSeenAt ?? createdAt).getTime() - 2 * 3_600_000);
+            return { organizationId, body: note.body, authorId: author?.id, createdAt: writtenAt };
           }),
         },
       },
