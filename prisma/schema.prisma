@@ -33,7 +33,66 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  memberships OrganizationMember[]
+  memberships   OrganizationMember[]
+  sessions      Session[]
+  accountTokens AccountToken[]
+}
+
+// ─── Sessions ────────────────────────────────────────────────────────────────
+
+/// One signed-in device or browser. Access tokens carry the session id, so
+/// revoking a session cuts off its access token as well as its refresh token.
+model Session {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  userId       String    @db.Uuid
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime  @default(now())
+  /// Absolute lifetime. Refreshing does not extend it past this point.
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  revokeReason String?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+}
+
+/// Refresh tokens rotate on every use. The raw token is never stored; a used
+/// token presented again means it was copied, and the whole session is revoked.
+model RefreshToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  sessionId String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+enum AccountTokenPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+/// Single-use tokens sent by email. Stored hashed, like refresh tokens.
+model AccountToken {
+  id        String              @id @default(uuid(7)) @db.Uuid
+  userId    String              @db.Uuid
+  purpose   AccountTokenPurpose
+  tokenHash String              @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
 }
 
 // ─── Tenancy ─────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4100),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  APP_URL: z.url(),
+  APP_URL: z.url({ protocol: /^https?$/ }),
   CORS_ORIGINS: z
     .string()
     .default('')
@@ -21,7 +21,21 @@ const envSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   REDIS_URL: z.url({ protocol: /^rediss?$/ }),
 
+  /** Proxies in front of the API (load balancer, platform router); 0 when exposed directly. */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+
   SWAGGER_ENABLED: booleanString.default(false),
+  /** Run queue processors in this process. Off for API-only replicas. */
+  WORKERS_ENABLED: booleanString.default(true),
+
+  JWT_ACCESS_SECRET: z.string().min(32, 'must be at least 32 characters'),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+  /** Defaults to true outside development; browsers drop Secure cookies on plain http. */
+  COOKIE_SECURE: booleanString.optional(),
+
+  SMTP_URL: z.url({ protocol: /^smtps?$/ }),
+  MAIL_FROM: z.string().min(3).default('TaskNest <no-reply@tasknest.app>'),
 });
 
 export type Env = z.infer<typeof envSchema>;

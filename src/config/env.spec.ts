@@ -4,6 +4,8 @@ const base = {
   APP_URL: 'http://localhost:3100',
   DATABASE_URL: 'postgresql://u:p@localhost:5433/db',
   REDIS_URL: 'redis://localhost:6380',
+  JWT_ACCESS_SECRET: 'x'.repeat(32),
+  SMTP_URL: 'smtp://localhost:1025',
 };
 
 describe('validateEnv', () => {
