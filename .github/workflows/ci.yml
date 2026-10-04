@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: tasknest
+          POSTGRES_PASSWORD: tasknest
+          POSTGRES_DB: tasknest_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tasknest" --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:8.10-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      APP_URL: http://localhost:3100
+      DATABASE_URL: postgresql://tasknest:tasknest@localhost:5432/tasknest_test
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx prisma migrate deploy
+      - run: npm run test:e2e
+      - run: npm run build
