@@ -126,3 +126,25 @@ authorization check, without letting anyone create a permission the code honours
 
 **Cost.** Renaming or removing a permission needs a data migration over
 `Role.permissions`. Writes to that column are validated against the catalog.
+
+---
+
+## ADR-009: Short-lived JWTs plus rotating opaque refresh tokens, without Passport
+
+**Decision.** Access tokens are 15-minute JWTs verified with `jose`. Refresh
+tokens are random strings stored hashed and rotated on every use. A small global
+guard does the checking; Passport is not used.
+
+**Why.** JWT access tokens let every request authenticate without a database
+read, which matters once WebSocket connections and workers authenticate too.
+Their weakness, staying valid after logout, is closed by a Redis revocation key
+per session. Refresh tokens do not need to be self-describing, so an opaque
+value we can look up, revoke and detect reuse of is strictly better than a
+second JWT.
+
+Passport's strategy abstraction pays off with many login methods. With one
+method today and OAuth planned behind the same session layer, the guard is about
+40 lines and keeps the security-relevant logic in plain sight.
+
+**Cost.** OAuth providers will need their own callback handling rather than an
+off-the-shelf strategy. The session layer they end in stays the same.
