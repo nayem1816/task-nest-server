@@ -123,6 +123,7 @@ model Organization {
   channels      Channel[]
   conversations Conversation[]
   aiUsage       AiUsage[]
+  knowledge     KnowledgeSource[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -641,4 +642,70 @@ model AiUsage {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
+}
+
+enum KnowledgeSourceType {
+  TEXT
+  URL
+  FILE
+}
+
+enum KnowledgeSourceStatus {
+  /// Waiting for the indexing worker.
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+/// Something the AI may answer from: a written article, a web page, or a file.
+model KnowledgeSource {
+  id             String                @id @default(uuid(7)) @db.Uuid
+  organizationId String                @db.Uuid
+  type           KnowledgeSourceType
+  title          String
+  /// URL sources only.
+  url            String?
+  /// FILE sources only: where the original lives in object storage.
+  fileKey        String?
+  fileName       String?
+  mimeType       String?
+  /// The text the chunks were made from: what was typed, or what was extracted.
+  content        String?
+  status         KnowledgeSourceStatus @default(PENDING)
+  /// Why the last indexing failed, worded for the person who added the source.
+  error          String?
+  /// Bumped on every edit or re-index request. A job only writes its result
+  /// if the revision is still the one it was started for.
+  revision       Int                   @default(0)
+  chunkCount     Int                   @default(0)
+  charCount      Int                   @default(0)
+  lastIndexedAt  DateTime?
+  createdById    String?               @db.Uuid
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chunks       KnowledgeChunk[]
+
+  @@index([organizationId, createdAt])
+}
+
+/// A passage of a source, embedded for semantic search. The full-text column
+/// and both search indexes are created in SQL (see the migration).
+model KnowledgeChunk {
+  id             String                      @id @default(uuid(7)) @db.Uuid
+  organizationId String                      @db.Uuid
+  sourceId       String                      @db.Uuid
+  position       Int
+  /// Heading path inside the source, e.g. "Shipping > International".
+  heading        String?
+  content        String
+  embedding      Unsupported("vector(768)")?
+  search         Unsupported("tsvector")?
+
+  source KnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, position])
+  @@index([organizationId])
 }

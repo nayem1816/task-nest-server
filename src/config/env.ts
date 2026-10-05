@@ -49,6 +49,24 @@ const envSchema = z.object({
   AI_EMBEDDING_MODEL: z.string().min(1).default('gemini-embedding-2'),
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
 
+  /** S3-compatible storage for uploaded files. Without keys, uploads are turned off. */
+  S3_ENDPOINT: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.url({ protocol: /^https?$/ }).optional(),
+  ),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().min(3).default('tasknest'),
+  S3_ACCESS_KEY_ID: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().optional(),
+  ),
+  S3_SECRET_ACCESS_KEY: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().optional(),
+  ),
+  /** RustFS and MinIO need path-style URLs; AWS and R2 do not. */
+  S3_FORCE_PATH_STYLE: booleanString.default(false),
+
   SMTP_URL: z.url({ protocol: /^smtps?$/ }),
   MAIL_FROM: z.string().min(3).default('TaskNest <no-reply@tasknest.app>'),
 });

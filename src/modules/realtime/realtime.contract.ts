@@ -13,6 +13,7 @@ export interface ServerToClientEvents {
   }) => void;
   'conversation.updated': (event: { conversationId: string; changes: string[] }) => void;
   typing: (event: { conversationId: string; memberId: string; name: string }) => void;
+  'knowledge.source.updated': (event: { sourceId: string; status: string }) => void;
 }
 
 export interface ClientToServerEvents {

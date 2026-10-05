@@ -214,6 +214,41 @@ Tests never call a real model: the test app replaces the provider with a
 scripted one. `npx tsx scripts/ai-smoke.ts` checks the real adapter (plain
 reply, tool round trip, embedding) with the key in `.env`.
 
+## Knowledge base
+
+Sources are written articles, public web pages, or uploaded files (PDF, Word,
+text, Markdown, HTML; up to 10 MB, originals kept in private object storage).
+Adding or editing one bumps its `revision` and queues an indexing job on the
+`knowledge` queue. The worker (`KnowledgeIndexer`):
+
+1. reads the text (pages through `fetchPublicPage`, files through the
+   extractors), keeping headings and lists as markdown,
+2. splits it into passages of about 600 tokens that never cross a section and
+   carry their heading path ("Shipping > International"), with a short overlap
+   when a long section is cut,
+3. embeds the passages through `AiService` (feature `knowledge.embed`),
+4. swaps the passages in, in one transaction, only if the source's revision is
+   still the one the job was queued for.
+
+Status moves PENDING → PROCESSING → READY or FAILED, with a message written for
+the person who added the source. Transient AI errors are retried by the queue;
+the source only fails on the last attempt. On start, the worker queues sources
+still waiting (for example, ones the seed script added).
+
+Search is hybrid: the nearest passages by embedding (HNSW index, cosine) and
+the best keyword matches (a generated `tsvector` with the `simple`
+configuration, so product names and order numbers match as written) are
+merged by reciprocal rank. Each result carries its cosine similarity so the
+agent can decline to answer when nothing is close enough. Failed sources are
+never searched.
+
+**Fetching pages safely.** `fetchPublicPage` only allows http(s), no
+credentials in the URL, text/html or text/plain, up to 2 MB and 15 seconds. The
+address check runs at connect time on the address actually dialled, for the
+first request and every redirect, and refuses loopback, private, link-local
+(cloud metadata), CGNAT, multicast and reserved ranges, IPv4-mapped IPv6
+included.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.

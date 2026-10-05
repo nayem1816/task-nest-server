@@ -57,5 +57,16 @@ messages.push(first.message, {
 const second = await provider.generate({ messages, tools }, signal);
 console.log('after tool:', JSON.stringify(second.text));
 
-const [vector] = await provider.embed(['black hoodie, size M'], 'document', signal);
-console.log('embedding:', vector?.length, 'norm', Math.hypot(...(vector ?? [])).toFixed(4));
+const vectors = await provider.embed(
+  ['black hoodie, size M', 'cold brew ratio', 'refunds'],
+  'document',
+  signal,
+);
+console.log(
+  'embeddings:',
+  vectors.length,
+  'of 3, dims',
+  vectors[0]?.length,
+  'norm',
+  Math.hypot(...(vectors[0] ?? [])).toFixed(4),
+);
