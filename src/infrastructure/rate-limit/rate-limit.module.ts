@@ -19,9 +19,11 @@ class TrackerThrottlerGuard extends ThrottlerGuard {
   }
 
   protected override getTracker(req: Record<string, unknown>): Promise<string> {
-    const { ip, clientIp } = req as unknown as Request;
+    const { ip, clientIp, originalUrl } = req as unknown as Request;
     const body = (req as { body?: unknown }).body as Record<string, unknown> | undefined;
-    const email = body?.email;
+    // Only sign-in style routes: elsewhere (the chat widget) the email is just
+    // data, and keying on it would let a caller dodge the limit by varying it.
+    const email = originalUrl.startsWith('/api/v1/auth/') ? body?.email : undefined;
     const suffix = typeof email === 'string' ? `:${email.trim().toLowerCase()}` : '';
     return Promise.resolve(`${clientIp ?? ip ?? 'unknown'}${suffix}`);
   }

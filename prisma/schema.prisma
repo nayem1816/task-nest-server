@@ -495,6 +495,10 @@ model Channel {
   type           ChannelType
   name           String
   status         ChannelStatus @default(ACTIVE)
+  /// Public id the website widget is installed with. Not a secret: it is in
+  /// every page that embeds the widget. Only website chat channels have one.
+  publicKey      String?       @unique
+  /// Per-type settings, validated in code (see channels/channel-settings.ts).
   settings       Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

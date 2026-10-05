@@ -18,6 +18,11 @@ handshake, and are closed when it expires (unless renewed), when its session is
 revoked, or when the member's role or status changes. See
 [architecture](architecture.md#realtime).
 
+Website visitors get a separate JWT (audience `tasknest-widget`, 30 days). It
+names one visitor on one channel and is only accepted by the `/widget` routes
+and socket namespace. Member routes reject it by audience, and the widget
+rejects member tokens the same way.
+
 ### Sessions
 
 A `Session` is one signed-in browser or device. It has an absolute expiry (30
