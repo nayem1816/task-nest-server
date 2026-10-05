@@ -112,6 +112,6 @@ export class KnowledgeSearchResultDto {
   content!: string;
   /** Cosine similarity, 0 to 1. Below ~0.5 the passage is probably not about the question. */
   similarity!: number;
-  /** Rank-fusion score used for ordering; only comparable within one search. */
+  /** Similarity plus a small keyword-match bonus; the order results come in. */
   score!: number;
 }

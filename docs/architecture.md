@@ -238,7 +238,11 @@ still waiting (for example, ones the seed script added).
 Search is hybrid: the nearest passages by embedding (HNSW index, cosine) and
 the best keyword matches (a generated `tsvector` with the `simple`
 configuration, so product names and order numbers match as written) are
-merged by reciprocal rank. Each result carries its cosine similarity so the
+ordered by cosine similarity, with a small bonus for keyword matches (the best
+keyword match +0.05, the next +0.025, …). Reciprocal rank fusion was the first
+version; it ignores how close the semantic matches are, and a passage that
+only shared a word with the question ("ship") outranked the one that answered
+it. Each result carries its cosine similarity so the
 agent can decline to answer when nothing is close enough. Failed sources are
 never searched.
 

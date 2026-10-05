@@ -5,14 +5,18 @@ import type { KnowledgeSearchResultDto } from './knowledge.dto.js';
 
 // Each half of the hybrid search contributes this many candidates.
 const CANDIDATES = 30;
-// Reciprocal rank fusion constant; 60 is the usual choice and keeps one
-// list's top hit from drowning out agreement between both lists.
-const RRF_K = 60;
+// Added to a passage's similarity when it also matches the words of the
+// question: the best keyword match gets the full bonus, the next half, and so
+// on. Small on purpose. Rank fusion was tried first and let a passage that
+// merely shared a word outrank a clearly closer one, because it ignores how
+// close the semantic matches actually are.
+const KEYWORD_BONUS = 0.05;
 
 /**
  * Hybrid search: semantic (embedding distance) finds passages that mean the
  * same thing in other words; keyword (full text) catches exact names, SKUs and
- * order numbers that embeddings blur. Results are merged by reciprocal rank.
+ * order numbers that embeddings blur. Results are ordered by similarity, with
+ * a small bonus for keyword matches.
  */
 @Injectable()
 export class KnowledgeSearchService {
@@ -58,11 +62,10 @@ export class KnowledgeSearchService {
         SELECT c."id" AS "chunkId", c."sourceId", s."title" AS "sourceTitle",
                s."type"::text AS "sourceType", s."url", c."heading", c."content",
                (1 - (c."embedding" <=> ${embedding}::vector))::float8 AS "similarity",
-               (coalesce(1.0 / (${RRF_K} + sem.rank), 0) + coalesce(1.0 / (${RRF_K} + kw.rank), 0))::float8 AS "score"
+               ((1 - (c."embedding" <=> ${embedding}::vector)) + coalesce(${KEYWORD_BONUS}::float8 / kw.rank, 0))::float8 AS "score"
         FROM (SELECT "id" FROM semantic UNION SELECT "id" FROM keyword) hits
         JOIN "KnowledgeChunk" c ON c."id" = hits."id"
         JOIN "KnowledgeSource" s ON s."id" = c."sourceId"
-        LEFT JOIN semantic sem ON sem."id" = c."id"
         LEFT JOIN keyword kw ON kw."id" = c."id"
         ORDER BY "score" DESC
         LIMIT ${limit}`;
@@ -70,12 +73,30 @@ export class KnowledgeSearchService {
   }
 }
 
-/** "Do you ship to Canada?" → "do | you | ship | to | canada": any word may match. */
+// Words that appear in almost every passage. Left in, they would give every
+// passage containing "can" or "you" a keyword hit, and that boost is enough to
+// push the passage that actually answers the question out of the results.
+const STOP_WORDS = new Set(
+  (
+    'a an and are as at be been but by can could did do does for from had has have how i if in ' +
+    'into is it its me my no not of on or our please so that the their them then there these ' +
+    'they this to too us was we were what when where which who why will with would you your'
+  ).split(' '),
+);
+
+/**
+ * "Where can I park?" → "park:*". Common words are dropped, and longer words
+ * match as prefixes, so "park" finds "parking" without a language-specific
+ * stemmer (which would mangle product names and non-English text).
+ */
 export function keywordQuery(query: string): string {
   const words = query
     .toLowerCase()
     .split(/\s+/)
     .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((w) => w.length >= 2);
-  return [...new Set(words)].slice(0, 16).join(' | ');
+    .filter((w) => w.length >= 2 && !STOP_WORDS.has(w));
+  return [...new Set(words)]
+    .slice(0, 16)
+    .map((w) => (w.length >= 4 ? `${w}:*` : w))
+    .join(' | ');
 }

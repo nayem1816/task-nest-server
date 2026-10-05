@@ -115,7 +115,9 @@ describe('knowledge (e2e)', () => {
 
     const refund = await search('can I get a refund on unopened bags');
     expect(refund[0]).toMatchObject({ sourceTitle: 'Returns policy' });
-    expect(refund[0]!.similarity).toBeGreaterThan(0);
+    // A zero vector anywhere makes similarity NaN, which JSON turns into null.
+    for (const hit of [...canada, ...refund]) expect(Number.isFinite(hit.similarity)).toBe(true);
+    expect(canada[0]!.similarity).toBeGreaterThan(canada.at(-1)!.similarity);
   });
 
   it('re-indexes an edited article and ignores the job for the old text', async () => {
