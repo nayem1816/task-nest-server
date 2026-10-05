@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { validateEnv } from './config/env.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { AppLoggerModule } from './infrastructure/logging/logger.module.js';
@@ -13,6 +14,7 @@ import { AuthorizationModule } from './modules/authorization/authorization.modul
 import { CommerceModule } from './modules/commerce/commerce.module.js';
 import { ContactsModule } from './modules/contacts/contacts.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { InboxModule } from './modules/inbox/inbox.module.js';
 import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
@@ -22,6 +24,7 @@ import { TeamsModule } from './modules/teams/teams.module.js';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnv }),
     AppLoggerModule,
+    EventEmitterModule.forRoot(),
     DatabaseModule,
     RedisModule,
     QueueModule,
@@ -39,6 +42,7 @@ import { TeamsModule } from './modules/teams/teams.module.js';
     InvitationsModule,
     ContactsModule,
     CommerceModule,
+    InboxModule,
   ],
 })
 export class AppModule {}
