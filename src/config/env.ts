@@ -39,6 +39,16 @@ const envSchema = z.object({
   /** Defaults to true outside development; browsers drop Secure cookies on plain http. */
   COOKIE_SECURE: booleanString.optional(),
 
+  /** Without it the AI features report "not set up" instead of failing at random. */
+  GEMINI_API_KEY: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().optional(),
+  ),
+  /** Model names change over time; keep them in configuration, not code. */
+  AI_CHAT_MODEL: z.string().min(1).default('gemini-3.8-flash'),
+  AI_EMBEDDING_MODEL: z.string().min(1).default('gemini-embedding-2'),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
+
   SMTP_URL: z.url({ protocol: /^smtps?$/ }),
   MAIL_FROM: z.string().min(3).default('TaskNest <no-reply@tasknest.app>'),
 });

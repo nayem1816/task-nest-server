@@ -23,6 +23,6 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "test", "prisma", "*.ts"],
+  "include": ["src", "test", "prisma", "scripts", "*.ts"],
   "exclude": ["node_modules", "dist"]
 }

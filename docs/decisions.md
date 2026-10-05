@@ -217,3 +217,26 @@ the AI tools, but too much friction for "do you ship to Canada?".
 
 **Cost.** Returning customers who chat from a new browser show up as a second
 contact until someone merges them, or until verification exists.
+
+---
+
+## ADR-013: One AI service in front of a swappable provider
+
+**Decision.** Business code calls `AiService` with provider-neutral messages
+and tools. A provider adapter (Gemini today) translates to the vendor SDK. Model
+names are configuration.
+
+**Why.** The agent, the knowledge base and the playground all need the same
+timeout, retry, error wording and usage accounting; putting it in one place
+means a new feature cannot forget it. Keeping the SDK behind one adapter means
+a price change or an outage at one vendor is a new adapter, not a rewrite of
+the agent. Model names change every few months (the 2.5 models were closed to
+new keys while this was being built), so they are not code.
+
+**Rejected.** Calling the SDK from each feature: fastest to write, and every
+feature would grow its own retry and error handling. A third-party "any LLM"
+gateway library: another dependency between us and the provider for a surface
+we use a small part of.
+
+**Cost.** Features that only one vendor offers need a neutral shape first, or
+stay out until they do.

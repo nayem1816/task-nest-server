@@ -122,6 +122,7 @@ model Organization {
   orders        Order[]
   channels      Channel[]
   conversations Conversation[]
+  aiUsage       AiUsage[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -619,4 +620,25 @@ model ConversationRead {
 
   @@id([conversationId, memberId])
   @@index([memberId])
+}
+
+/// One call to the AI provider. Kept for usage limits, cost reporting and
+/// spotting failures; prompts and replies are not stored here.
+model AiUsage {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  /// What asked for it, e.g. "agent.reply", "knowledge.embed", "ai.check".
+  feature        String
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  latencyMs      Int
+  ok             Boolean
+  /// Our error code when ok is false (AI_TIMEOUT, AI_RATE_LIMITED, ...).
+  errorCode      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
 }
