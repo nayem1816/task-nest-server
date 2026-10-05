@@ -57,7 +57,7 @@ export class ScriptedAiProvider implements AiProvider {
 
 function wordVector(text: string): number[] {
   const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);
-  for (const word of text.toLowerCase().match(/[p{L}p{N}]+/gu) ?? []) {
+  for (const word of text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []) {
     let hash = 0;
     for (const char of word) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
     vector[hash % EMBEDDING_DIMENSIONS]! += 1;
