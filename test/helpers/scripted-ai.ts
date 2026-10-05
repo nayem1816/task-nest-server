@@ -1,9 +1,10 @@
 import { AiError, type AiErrorCode } from '../../src/modules/ai/ai.errors.js';
-import type {
-  AiProvider,
-  EmbeddingPurpose,
-  GenerateRequest,
-  GenerateResult,
+import {
+  type AiProvider,
+  EMBEDDING_DIMENSIONS,
+  type EmbeddingPurpose,
+  type GenerateRequest,
+  type GenerateResult,
 } from '../../src/modules/ai/ai.types.js';
 
 type Step = { reply: string; usage?: [number, number] } | { fail: AiErrorCode };
@@ -40,7 +41,27 @@ export class ScriptedAiProvider implements AiProvider {
     });
   }
 
+  readonly embedded: string[] = [];
+
+  /**
+   * Bag-of-words vectors: each word lights up one dimension. Texts that share
+   * words land close together, which is enough to test ranking and filtering
+   * without a model.
+   */
   embed(texts: string[], _purpose: EmbeddingPurpose): Promise<number[][]> {
-    return Promise.resolve(texts.map(() => [1, 0, 0]));
+    if (!this.configured) return Promise.reject(new AiError('AI_NOT_CONFIGURED'));
+    this.embedded.push(...texts);
+    return Promise.resolve(texts.map(wordVector));
   }
+}
+
+function wordVector(text: string): number[] {
+  const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);
+  for (const word of text.toLowerCase().match(/[p{L}p{N}]+/gu) ?? []) {
+    let hash = 0;
+    for (const char of word) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    vector[hash % EMBEDDING_DIMENSIONS]! += 1;
+  }
+  const length = Math.hypot(...vector) || 1;
+  return vector.map((v) => v / length);
 }

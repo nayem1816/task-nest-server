@@ -16,6 +16,7 @@ import {
   type MemberChangedEvent,
   type SessionsRevokedEvent,
 } from '../../common/events/access.events.js';
+import { KnowledgeEvents, type KnowledgeSourceUpdatedEvent } from '../knowledge/knowledge.types.js';
 import { MemberStatus } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { AccessTokenService } from '../auth/access-token.service.js';
@@ -156,6 +157,15 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     this.server?.to(rooms.inbox(event.organizationId)).emit('conversation.updated', {
       conversationId: event.conversationId,
       changes: event.changes,
+    });
+  }
+
+  /** Indexing progress, so the knowledge page updates without polling. */
+  @OnEvent(KnowledgeEvents.sourceUpdated)
+  onKnowledgeSourceUpdated(event: KnowledgeSourceUpdatedEvent): void {
+    this.server?.to(rooms.organization(event.organizationId)).emit('knowledge.source.updated', {
+      sourceId: event.sourceId,
+      status: event.status,
     });
   }
 

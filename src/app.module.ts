@@ -8,6 +8,7 @@ import { MailModule } from './infrastructure/mail/mail.module.js';
 import { QueueModule } from './infrastructure/queue/queue.module.js';
 import { RateLimitModule } from './infrastructure/rate-limit/rate-limit.module.js';
 import { RedisModule } from './infrastructure/redis/redis.module.js';
+import { StorageModule } from './infrastructure/storage/storage.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -17,6 +18,7 @@ import { CommerceModule } from './modules/commerce/commerce.module.js';
 import { ContactsModule } from './modules/contacts/contacts.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InboxModule } from './modules/inbox/inbox.module.js';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module.js';
 import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
@@ -32,6 +34,7 @@ import { WidgetModule } from './modules/widget/widget.module.js';
     DatabaseModule,
     RedisModule,
     QueueModule,
+    StorageModule,
     MailModule,
     AuditModule,
     AiModule,
@@ -50,6 +53,7 @@ import { WidgetModule } from './modules/widget/widget.module.js';
     InboxModule,
     ChannelsModule,
     WidgetModule,
+    KnowledgeModule,
     RealtimeModule,
   ],
 })

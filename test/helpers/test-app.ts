@@ -10,6 +10,8 @@ import { MailService } from '../../src/infrastructure/mail/mail.service.js';
 import type { OutgoingMail } from '../../src/infrastructure/mail/mail.types.js';
 import { RATE_LIMIT_KEY_PREFIX } from '../../src/infrastructure/rate-limit/redis-throttler.storage.js';
 import { REDIS } from '../../src/infrastructure/redis/redis.module.js';
+import { StorageService } from '../../src/infrastructure/storage/storage.service.js';
+import { MemoryStorage } from './memory-storage.js';
 import { ScriptedAiProvider } from './scripted-ai.js';
 
 /** Captures outgoing email instead of queueing it. */
@@ -37,18 +39,22 @@ export interface TestApp {
   outbox: MailOutbox;
   /** The model every suite talks to; script its answers per test. */
   ai: ScriptedAiProvider;
+  storage: MemoryStorage;
   resetRateLimits(): Promise<void>;
 }
 
 export async function createTestApp(): Promise<TestApp> {
   const outbox = new MailOutbox();
   const ai = new ScriptedAiProvider();
+  const storage = new MemoryStorage();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(MailService)
     .useValue(outbox)
     // Never the real provider: a developer's .env key must not make tests spend tokens.
     .overrideProvider(AI_PROVIDER)
     .useValue(ai)
+    .overrideProvider(StorageService)
+    .useValue(storage)
     .compile();
 
   const app = moduleRef.createNestApplication<INestApplication<App>>({ bufferLogs: true });
@@ -64,6 +70,7 @@ export async function createTestApp(): Promise<TestApp> {
     redis,
     outbox,
     ai,
+    storage,
     async resetRateLimits() {
       const keys = await redis.keys(`${RATE_LIMIT_KEY_PREFIX}*`);
       if (keys.length > 0) await redis.del(...keys);

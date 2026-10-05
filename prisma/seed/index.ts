@@ -4,6 +4,7 @@ import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { seedDemoCommerce } from './demo-commerce.js';
 import { seedDemoContacts } from './demo-contacts.js';
 import { seedDemoInbox } from './demo-inbox.js';
+import { seedDemoKnowledge } from './demo-knowledge.js';
 import { DEMO_PASSWORD, seedDemoWorkspace } from './demo-workspace.js';
 
 if (process.env.NODE_ENV === 'production') {
@@ -20,10 +21,12 @@ try {
   const contacts = await seedDemoContacts(prisma, workspace.organizationId);
   const commerce = await seedDemoCommerce(prisma, workspace.organizationId);
   const inbox = await seedDemoInbox(prisma, workspace.organizationId);
+  const knowledge = await seedDemoKnowledge(prisma, workspace.organizationId);
   console.log(
     `Seeded ${workspace.organization}: ${workspace.members} members, ${workspace.teams} teams, ` +
       `${contacts.contacts} new contacts, ${contacts.tags} tags, ${commerce.products} products, ` +
-      `${commerce.orders} new orders, ${inbox.conversations} new conversations.`,
+      `${commerce.orders} new orders, ${inbox.conversations} new conversations, ` +
+      `${knowledge.sources} knowledge articles (indexed when the API starts).`,
   );
   console.log(`Sign in as maya@northstarcoffee.co (owner) with password "${DEMO_PASSWORD}".`);
 } finally {

@@ -2,6 +2,7 @@ import { type INestApplication, ValidationPipe, VersioningType } from '@nestjs/c
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Express } from 'express';
 import helmet from 'helmet';
 import { Logger, PinoLogger } from 'nestjs-pino';
@@ -28,6 +29,9 @@ export async function configureApp(app: INestApplication): Promise<void> {
   if (proxyHops > 0) {
     (app.getHttpAdapter().getInstance() as Express).set('trust proxy', proxyHops);
   }
+
+  // Written knowledge articles can run to a few hundred KB; everything else is small.
+  (app as NestExpressApplication).useBodyParser('json', { limit: '1mb' });
 
   app.use(clientIpMiddleware(config.get('EDGE_PROXY_SECRET', { infer: true })));
   app.useLogger(app.get(Logger));

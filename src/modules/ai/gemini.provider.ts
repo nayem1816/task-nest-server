@@ -84,7 +84,9 @@ export class GeminiProvider implements AiProvider {
       const response = await call(() =>
         client.models.embedContent({
           model: this.embeddingModel,
-          contents: batch,
+          // One Content per text. A plain string array is read by gemini-embedding-2
+          // as the parts of a single input and comes back as one embedding.
+          contents: batch.map((text) => ({ parts: [{ text }] })),
           config: {
             abortSignal: signal,
             taskType: purpose === 'query' ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',

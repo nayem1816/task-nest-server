@@ -16,7 +16,7 @@ Built phase by phase. Each phase lands as its own branch and pull request into
 | 8   | Real-time                    | Done    |
 | 9   | Website chat widget          | Done    |
 | 10  | AI provider layer            | Done    |
-| 11  | Knowledge base and RAG       | Planned |
+| 11  | Knowledge base and RAG       | Done    |
 | 12  | AI agent                     | Planned |
 | 13  | AI tools                     | Planned |
 | 14  | AI playground                | Planned |

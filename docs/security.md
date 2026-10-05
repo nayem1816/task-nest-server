@@ -122,3 +122,18 @@ domain only.
 `helmet` defaults (HSTS, `nosniff`, same-origin framing and so on), strict CORS with an
 explicit origin list, `X-Powered-By` removed, and request bodies validated with a
 whitelist: unknown fields are rejected, not ignored.
+
+## Server-side requests
+
+The only place the API fetches a URL a user typed is the knowledge base's web
+page import. It refuses private, loopback, link-local and reserved addresses at
+connect time, for every redirect, so neither an internal hostname nor DNS that
+changes its answer can reach the cloud metadata service, Redis or the database.
+See [architecture](architecture.md#knowledge-base).
+
+## Uploaded files
+
+Files go to private object storage under `orgs/<organizationId>/...`. They are
+never served publicly; the API reads them back only to extract text. Types are
+decided by extension from a fixed list, size is capped at 10 MB by the upload
+handler, and deleting a source deletes its file.
