@@ -105,6 +105,14 @@ change, so an entry exists exactly when the change committed. The actor is
 stored as an id plus a name snapshot, so old entries still read correctly after
 someone is renamed or removed. Entries are never updated.
 
+## Domain events
+
+Modules publish what happened through `@nestjs/event-emitter` after their
+transaction commits (for example `inbox.message.created`). The realtime gateway,
+and later automation and analytics, subscribe to these instead of being called
+by the inbox. Internal notes carry `internal: true` so no listener can forward
+them to a customer by accident.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.

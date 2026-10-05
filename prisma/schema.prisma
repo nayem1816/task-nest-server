@@ -111,15 +111,17 @@ model Organization {
   /// Soft delete: data is retained for the grace period, then purged by a job.
   deletedAt    DateTime?
 
-  roles       Role[]
-  members     OrganizationMember[]
-  teams       Team[]
-  invitations Invitation[]
-  auditLogs   AuditLog[]
-  contacts    Contact[]
-  tags        Tag[]
-  products    Product[]
-  orders      Order[]
+  roles         Role[]
+  members       OrganizationMember[]
+  teams         Team[]
+  invitations   Invitation[]
+  auditLogs     AuditLog[]
+  contacts      Contact[]
+  tags          Tag[]
+  products      Product[]
+  orders        Order[]
+  channels      Channel[]
+  conversations Conversation[]
 }
 
 /// Roles are per organization so a tenant can add custom ones later. The six
@@ -160,12 +162,15 @@ model OrganizationMember {
   joinedAt       DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Restrict: a role cannot be deleted while members still hold it.
-  role         Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  teams        TeamMember[]
-  contactNotes ContactNote[]
+  role                  Role               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  teams                 TeamMember[]
+  contactNotes          ContactNote[]
+  assignedConversations Conversation[]     @relation("ConversationAssignee")
+  messages              Message[]
+  conversationReads     ConversationRead[]
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -180,8 +185,9 @@ model Team {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members      TeamMember[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members       TeamMember[]
+  conversations Conversation[]
 
   @@unique([organizationId, name])
 }
@@ -277,12 +283,13 @@ model Contact {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  identities   ContactIdentity[]
-  tags         ContactTag[]
-  notes        ContactNote[]
-  activities   ContactActivity[]
-  orders       Order[]
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identities    ContactIdentity[]
+  tags          ContactTag[]
+  notes         ContactNote[]
+  activities    ContactActivity[]
+  orders        Order[]
+  conversations Conversation[]
 
   /// An email belongs to at most one contact per workspace; NULLs do not collide.
   @@unique([organizationId, email])
@@ -328,8 +335,9 @@ model Tag {
   color          String   @default("slate")
   createdAt      DateTime @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  contacts     ContactTag[]
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts      ContactTag[]
+  conversations ConversationTag[]
 
   @@unique([organizationId, name])
 }
@@ -468,4 +476,143 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+// ─── Inbox ───────────────────────────────────────────────────────────────────
+
+enum ChannelStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+/// Where conversations come from: the website widget, an email address, a
+/// Telegram bot. Credentials live elsewhere (encrypted); `settings` holds only
+/// what is safe to show, such as the widget greeting.
+model Channel {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @db.Uuid
+  type           ChannelType
+  name           String
+  status         ChannelStatus @default(ACTIVE)
+  settings       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([organizationId])
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+/// Who is answering. Kept apart from status: a conversation can be OPEN while
+/// the AI handles it, or OPEN after the AI escalated it to a person.
+enum ConversationHandler {
+  AI_HANDLING
+  HUMAN_HANDLING
+  AI_ESCALATED
+}
+
+enum ConversationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Conversation {
+  id                 String               @id @default(uuid(7)) @db.Uuid
+  organizationId     String               @db.Uuid
+  channelId          String               @db.Uuid
+  contactId          String               @db.Uuid
+  subject            String?
+  status             ConversationStatus   @default(OPEN)
+  handler            ConversationHandler  @default(HUMAN_HANDLING)
+  priority           ConversationPriority @default(NORMAL)
+  assigneeId         String?              @db.Uuid
+  teamId             String?              @db.Uuid
+  /// Why the AI handed over, in words an agent can act on.
+  escalationReason   String?
+  lastMessageAt      DateTime             @default(now())
+  lastMessagePreview String?
+  /// Last time the customer wrote. Unread means this is later than the member's lastReadAt.
+  lastInboundAt      DateTime?
+  /// Set by the first reply a person or the AI sends; used for response-time metrics.
+  firstResponseAt    DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channel      Channel             @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  contact      Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignee     OrganizationMember? @relation("ConversationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  team         Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  messages     Message[]
+  tags         ConversationTag[]
+  reads        ConversationRead[]
+
+  @@index([organizationId, status, lastMessageAt(sort: Desc)])
+  @@index([organizationId, assigneeId, status])
+  @@index([organizationId, teamId, status])
+  @@index([contactId])
+}
+
+enum MessageSender {
+  CONTACT
+  MEMBER
+  AI
+  SYSTEM
+}
+
+model Message {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @db.Uuid
+  conversationId String        @db.Uuid
+  sender         MessageSender
+  /// The member who wrote it, for MEMBER messages and notes.
+  authorId       String?       @db.Uuid
+  /// Internal notes are visible to the team only and never sent to the customer.
+  internal       Boolean       @default(false)
+  body           String
+  /// Sender-specific extras, e.g. the AI's sources and confidence, or a system event's details.
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       OrganizationMember? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, id(sort: Desc)])
+}
+
+model ConversationTag {
+  conversationId String   @db.Uuid
+  tagId          String   @db.Uuid
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, tagId])
+  @@index([tagId])
+}
+
+/// How far each member has read a conversation; unread counts are computed from it.
+model ConversationRead {
+  conversationId String   @db.Uuid
+  memberId       String   @db.Uuid
+  lastReadAt     DateTime
+
+  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  member       OrganizationMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, memberId])
+  @@index([memberId])
 }

@@ -90,9 +90,22 @@ gap-free without a separate counter row that every order would lock.
 **Revenue.** "Spent" counts paid, fulfilled, shipped and delivered orders only.
 Refunded and cancelled orders still appear in the order count.
 
+## Inbox
+
+| Table              | Notes                                                                                                                                                                                                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Channel`          | Where conversations arrive (website chat, email, Telegram). `settings` holds only non-secret display values.                                                                                                                                                                                                     |
+| `Conversation`     | `status` (OPEN, PENDING, RESOLVED, CLOSED) and `handler` (AI_HANDLING, HUMAN_HANDLING, AI_ESCALATED) are separate on purpose: who is answering is a different question from whether it is done. Denormalised `lastMessageAt`, `lastMessagePreview` and `lastInboundAt` keep the inbox list to one indexed query. |
+| `Message`          | `sender` is CONTACT, MEMBER, AI or SYSTEM. `internal` marks notes, which never leave the team. System messages record assignment and status changes in the thread itself.                                                                                                                                        |
+| `ConversationRead` | One row per member per conversation. Unread = customer messages newer than `lastReadAt`, counted for a whole page in one grouped query.                                                                                                                                                                          |
+| `ConversationTag`  | Reuses workspace tags, so "Wholesale" means the same thing on a contact and a conversation.                                                                                                                                                                                                                      |
+
+The inbox list is keyset-paginated on `(lastMessageAt, id)` so new messages
+reordering the list do not cause skipped or repeated rows between pages.
+
 ## Seed data
 
 `npm run db:seed` creates the **Northstar Coffee** demo workspace: seven members
 across all six system roles, two teams, and 24 customers, wholesale accounts and
-leads with tags and notes, a 12-product catalogue and 32 orders (#10455 to #10486). Every demo user signs in with `northstar-demo`. It is idempotent and refuses to run
+leads with tags and notes, a 12-product catalogue, 32 orders (#10455 to #10486), and 13 conversations across website chat and email. Every demo user signs in with `northstar-demo`. It is idempotent and refuses to run
 with `NODE_ENV=production`.
