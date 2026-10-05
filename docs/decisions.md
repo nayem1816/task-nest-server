@@ -197,3 +197,23 @@ Redis adapter solves multi-instance fan-out without extra work.
 **Cost.** An extra request per event per open tab. Inbox traffic per workspace
 is small enough that this is cheap, and React Query deduplicates refetches for
 the same key.
+
+---
+
+## ADR-012: An email given in the chat widget is not linked to an existing customer
+
+**Decision.** When a visitor types an email that is new to the workspace, it is
+saved on their contact. When it already belongs to another contact, the visitor
+keeps a separate contact and the claim is written to its timeline
+(`contact.email_unverified`) for the team to check.
+
+**Why.** Anyone can type any address. Linking on a match would put a stranger's
+messages on a real customer's profile and, once the AI can look up orders,
+answer questions about that customer's orders to whoever claimed the email.
+
+**Rejected.** Linking automatically (the common shortcut). Emailing a
+verification code before chatting: right for order lookups, so it comes with
+the AI tools, but too much friction for "do you ship to Canada?".
+
+**Cost.** Returning customers who chat from a new browser show up as a second
+contact until someone merges them, or until verification exists.

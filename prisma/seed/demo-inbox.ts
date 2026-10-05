@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import type { ConversationPriority, ConversationStatus } from '../../src/generated/prisma/enums.js';
+import { newPublicKey } from '../../src/modules/channels/channel-settings.js';
 
 type Line =
   | { from: 'customer'; text: string; at: number }
@@ -279,9 +280,13 @@ export async function seedDemoInbox(prisma: PrismaClient, organizationId: string
       organizationId,
       type: 'WEBSITE_CHAT',
       name: 'Website chat',
+      publicKey: newPublicKey(),
       settings: {
         greeting:
           'Hi! Questions about an order or our coffee? We usually reply within a few minutes.',
+        accentColor: '#9a3412',
+        allowedOrigins: [],
+        askForEmail: true,
       },
     },
   });

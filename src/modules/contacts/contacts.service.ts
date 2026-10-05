@@ -280,6 +280,90 @@ export class ContactsService {
   }
 
   /** Turns the unique-email violation into a 409 that points at the existing contact. */
+  /**
+   * The contact behind a channel identity (a website visitor id, later a
+   * Telegram user id), created on first contact. A name or email the person
+   * types in fills empty fields only.
+   *
+   * An email that already belongs to another contact is not linked: anyone can
+   * type any address into a chat box, and linking would show a stranger's
+   * conversation on that customer's profile (and, later, let the AI read them
+   * that customer's orders). It is recorded on the timeline instead, so the
+   * team can merge by hand once they have checked.
+   */
+  async resolveChannelContact(input: {
+    organizationId: string;
+    channel: 'WEBSITE_CHAT';
+    externalId: string;
+    name?: string;
+    email?: string;
+  }): Promise<string> {
+    const attempt = () =>
+      this.prisma.$transaction(async (tx) => {
+        const { organizationId, channel, externalId } = input;
+        const identity = await tx.contactIdentity.findUnique({
+          where: { organizationId_channel_externalId: { organizationId, channel, externalId } },
+          select: { contact: true },
+        });
+
+        let contact = identity?.contact;
+        if (!contact) {
+          contact = await tx.contact.create({
+            data: {
+              organizationId,
+              name: input.name,
+              identities: { create: { organizationId, channel, externalId } },
+            },
+          });
+          await this.activity.record(
+            {
+              organizationId,
+              contactId: contact.id,
+              type: 'contact.created',
+              metadata: { source: 'website_chat' },
+            },
+            tx,
+          );
+        } else if (input.name && !contact.name) {
+          await tx.contact.update({ where: { id: contact.id }, data: { name: input.name } });
+        }
+
+        const email = input.email?.toLowerCase();
+        if (email && !contact.email) {
+          const owner = await tx.contact.findFirst({
+            where: { organizationId, email },
+            select: { id: true },
+          });
+          if (!owner) {
+            await tx.contact.update({ where: { id: contact.id }, data: { email } });
+            await syncIdentity(tx, contact, 'EMAIL', null, email);
+          } else if (owner.id !== contact.id) {
+            await this.activity.record(
+              {
+                organizationId,
+                contactId: contact.id,
+                type: 'contact.email_unverified',
+                metadata: { email, existingContactId: owner.id },
+              },
+              tx,
+            );
+          }
+        }
+        return contact.id;
+      });
+
+    try {
+      return await attempt();
+    } catch (err) {
+      // Two first messages from one visitor at once: the other request created
+      // the contact, so the second attempt finds it.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return attempt();
+      }
+      throw err;
+    }
+  }
+
   private async withEmailCheck<T>(
     organizationId: string,
     email: string | null | undefined,

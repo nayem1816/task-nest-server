@@ -152,6 +152,36 @@ the worker has no gateway of its own.
 The global HTTP guards skip socket messages: the handshake is where a socket is
 authenticated.
 
+## Website chat
+
+A website chat channel has a public key (`wk_…`) that goes into the install
+snippet. The widget runs in an iframe served by the web app and calls the
+public `/api/v1/widget` routes:
+
+1. `POST /widget/session` with the key, the page's origin and, on a return
+   visit, the previous visitor token. It answers with a visitor token (30 days,
+   kept in the widget's storage), the greeting and colors, and what is known
+   about the visitor.
+2. `GET /widget/messages` returns the visitor's current conversation: their own
+   messages, team replies and AI replies. Internal notes and system lines are
+   never included.
+3. `POST /widget/messages` sends a message. The first one creates the contact
+   (identity `WEBSITE_CHAT` + visitor id) and the conversation, through the
+   same `receiveInbound` path every channel uses.
+
+The widget listens on the `/widget` Socket.IO namespace with its visitor token
+and refetches when told a message arrived. That namespace only has per-visitor
+rooms, so a visitor token cannot hear anything but its own chat.
+
+**Allowed sites.** When a channel lists allowed sites, sessions only start for
+those origins. The origin comes from the loader script running on the page, so
+this keeps the widget off sites it was not installed on. It does not stop
+someone calling the API directly with a forged origin; nothing a browser sends
+can. The visitor can only ever reach their own chat, so there is nothing more
+to gain that way.
+
+**Emails typed into the chat are claims, not proof.** See ADR-012.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.
