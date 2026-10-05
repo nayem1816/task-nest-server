@@ -18,6 +18,7 @@ import { InboxModule } from './modules/inbox/inbox.module.js';
 import { InvitationsModule } from './modules/invitations/invitations.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
+import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { TeamsModule } from './modules/teams/teams.module.js';
 
 @Module({
@@ -43,6 +44,7 @@ import { TeamsModule } from './modules/teams/teams.module.js';
     ContactsModule,
     CommerceModule,
     InboxModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

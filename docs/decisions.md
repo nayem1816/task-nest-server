@@ -172,3 +172,28 @@ connections and does not replace permission checks.
 
 **Cost.** One extra query per tenant request. If it shows up in profiles, the
 membership can be cached in Redis for a few seconds and invalidated on change.
+
+---
+
+## ADR-011: Realtime events carry ids, and the client refetches
+
+**Decision.** The Socket.IO gateway pushes small notices (`message.created`
+with a conversation and message id, `conversation.updated` with what changed).
+The client invalidates the matching React Query caches and loads the data over
+REST.
+
+**Why.** The REST layer already decides, per role, what a member may see. If
+sockets carried records, every listener would have to repeat that filtering,
+and the first one that forgot would leak data (an internal note, a contact
+field). With ids only, the worst a mistake can expose is that something
+happened. It also keeps the client simple: one source of truth for data, the
+socket only says when to look again.
+
+**Rejected.** Pushing full records: one fewer round trip per event, but a
+second, parallel authorization path. Server-sent events: fine for one-way
+pushes, but typing indicators need the client to talk back, and Socket.IO's
+Redis adapter solves multi-instance fan-out without extra work.
+
+**Cost.** An extra request per event per open tab. Inbox traffic per workspace
+is small enough that this is cheap, and React Query deduplicates refetches for
+the same key.

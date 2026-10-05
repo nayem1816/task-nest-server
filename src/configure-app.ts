@@ -9,11 +9,13 @@ import { clientIpMiddleware } from './common/http/client-ip.js';
 import { HttpExceptionFilter } from './common/http/http-exception.filter.js';
 import { REQUEST_ID_HEADER } from './common/http/request-id.js';
 import type { Env } from './config/env.js';
+import { REDIS } from './infrastructure/redis/redis.module.js';
 import { CSRF_HEADER, REFRESH_COOKIE } from './modules/auth/refresh-cookie.js';
 import {
   ORGANIZATION_HEADER,
   WORKSPACE_SECURITY,
 } from './modules/authorization/tenant.decorators.js';
+import { RedisIoAdapter } from './modules/realtime/redis-io.adapter.js';
 
 /**
  * Everything that shapes the HTTP surface lives here, so the e2e suite boots
@@ -41,13 +43,21 @@ export async function configureApp(app: INestApplication): Promise<void> {
     }),
   );
 
+  const origins = [
+    config.get('APP_URL', { infer: true }),
+    ...config.get('CORS_ORIGINS', { infer: true }),
+  ];
+  const logger = await app.resolve(PinoLogger);
+  app.useWebSocketAdapter(
+    new RedisIoAdapter(app, app.get(REDIS), origins, (err) =>
+      logger.warn({ err }, 'Realtime Redis connection error'),
+    ),
+  );
+
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
-    origin: [
-      config.get('APP_URL', { infer: true }),
-      ...config.get('CORS_ORIGINS', { infer: true }),
-    ],
+    origin: origins,
     credentials: true,
     allowedHeaders: [
       'content-type',

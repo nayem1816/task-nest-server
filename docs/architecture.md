@@ -113,6 +113,45 @@ and later automation and analytics, subscribe to these instead of being called
 by the inbox. Internal notes carry `internal: true` so no listener can forward
 them to a customer by accident.
 
+## Realtime
+
+The web app keeps one Socket.IO connection per tab, opened for one workspace.
+The handshake (`auth: { token, organizationId }`) runs the same checks as the
+HTTP guards: a valid access token, a session that has not been revoked, and an
+active membership. Rejections carry a code in `err.data.code`
+(`UNAUTHENTICATED`, `SESSION_EXPIRED`, `ORGANIZATION_REQUIRED`,
+`ORGANIZATION_ACCESS_DENIED`).
+
+Each socket joins a few rooms: the workspace, its session, its membership, and
+the workspace inbox if the role has `conversation.read`. The gateway forwards
+domain events to those rooms:
+
+| Server → client        | Payload                                             |
+| ---------------------- | --------------------------------------------------- |
+| `message.created`      | `conversationId`, `messageId`, `internal`, `sender` |
+| `conversation.updated` | `conversationId`, `changes`                         |
+| `typing`               | `conversationId`, `memberId`, `name`                |
+
+Events carry ids only. The client refetches through REST, so every field it
+shows has passed the same permission checks as a normal request, and a socket
+can never become a way around them.
+
+Clients send `typing` (`{ conversationId }`, at most once a second; the
+conversation must belong to the workspace) and `auth.renew`
+(`{ token }`, acknowledged with `{ ok }`) after refreshing their access token.
+A connection is closed when its token expires without renewal, when its
+session is revoked (logout, password change, refresh-token reuse), and when the
+member is removed, disabled or given another role. The client then reconnects,
+and the handshake decides again.
+
+Socket.IO runs over the Redis adapter, so a broadcast or a forced disconnect
+from one API instance reaches sockets held by another. Events raised in a
+separate worker process (AI replies, later) will need the Redis emitter, since
+the worker has no gateway of its own.
+
+The global HTTP guards skip socket messages: the handshake is where a socket is
+authenticated.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.
