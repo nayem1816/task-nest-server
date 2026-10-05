@@ -13,6 +13,11 @@ The refresh cookie is scoped to the auth routes, so no other endpoint ever
 receives it. The database stores only the SHA-256 of each refresh token; a leaked
 `RefreshToken` table cannot be replayed.
 
+Realtime connections authenticate with the same access token in the Socket.IO
+handshake, and are closed when it expires (unless renewed), when its session is
+revoked, or when the member's role or status changes. See
+[architecture](architecture.md#realtime).
+
 ### Sessions
 
 A `Session` is one signed-in browser or device. It has an absolute expiry (30

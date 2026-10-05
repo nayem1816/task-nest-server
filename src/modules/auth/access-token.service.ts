@@ -8,6 +8,11 @@ export interface AccessTokenClaims {
   sessionId: string;
 }
 
+export interface VerifiedAccessToken extends AccessTokenClaims {
+  /** Epoch milliseconds; long-lived connections close when it passes. */
+  expiresAt: number;
+}
+
 const ISSUER = 'tasknest-api';
 const AUDIENCE = 'tasknest-web';
 
@@ -33,15 +38,17 @@ export class AccessTokenService {
   }
 
   /** Returns null for anything that is not a valid, unexpired token we issued. */
-  async verify(token: string): Promise<AccessTokenClaims | null> {
+  async verify(token: string): Promise<VerifiedAccessToken | null> {
     try {
       const { payload } = await jwtVerify(token, this.key, {
         issuer: ISSUER,
         audience: AUDIENCE,
         algorithms: ['HS256'],
       });
-      if (typeof payload.sub !== 'string' || typeof payload.sid !== 'string') return null;
-      return { userId: payload.sub, sessionId: payload.sid };
+      if (typeof payload.sub !== 'string' || typeof payload.sid !== 'string' || !payload.exp) {
+        return null;
+      }
+      return { userId: payload.sub, sessionId: payload.sid, expiresAt: payload.exp * 1000 };
     } catch {
       return null;
     }

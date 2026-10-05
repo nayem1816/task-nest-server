@@ -7,13 +7,13 @@ Built phase by phase. Each phase lands as its own branch and pull request into
 | --- | ---------------------------- | ------- |
 | 0   | Foundation                   | Done    |
 | 1   | Core schema                  | Done    |
-| 2   | Authentication               | Planned |
+| 2   | Authentication               | Done    |
 | 3   | Organizations, RBAC, audit   | Done    |
 | 4   | Design system and app shell  | Done    |
 | 5   | Contacts                     | Done    |
 | 6   | Products and orders          | Done    |
 | 7   | Inbox                        | Done    |
-| 8   | Real-time                    | Planned |
+| 8   | Real-time                    | Done    |
 | 9   | Website chat widget          | Planned |
 | 10  | AI provider layer            | Planned |
 | 11  | Knowledge base and RAG       | Planned |

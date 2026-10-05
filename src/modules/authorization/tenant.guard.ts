@@ -23,6 +23,8 @@ export class TenantGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== 'http') return true; // See AccessTokenGuard.
+
     const required = this.reflector.getAllAndOverride<Permission[] | undefined>(TENANT_METADATA, [
       context.getHandler(),
       context.getClass(),

@@ -1,4 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AccessEvents, type MemberChangedEvent } from '../../common/events/access.events.js';
 import { AppException } from '../../common/http/app-exception.js';
 import { MemberStatus } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
@@ -42,6 +44,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async list(organizationId: string): Promise<MemberDto[]> {
@@ -54,7 +57,8 @@ export class MembersService {
   }
 
   async update(actor: RequestActor, memberId: string, dto: UpdateMemberDto): Promise<MemberDto> {
-    return this.prisma.$transaction(async (tx) => {
+    let accessChanged = false;
+    const updated = await this.prisma.$transaction(async (tx) => {
       const member = await tx.organizationMember.findFirst({
         where: { id: memberId, organizationId: actor.organizationId },
         include: memberInclude,
@@ -71,6 +75,7 @@ export class MembersService {
         if (!role) throw errors.roleNotFound();
         if (role.key === OWNER && actor.roleKey !== OWNER) throw errors.ownerOnly();
         roleId = role.id;
+        accessChanged = true;
 
         await this.audit.record(
           actor,
@@ -85,6 +90,7 @@ export class MembersService {
       }
 
       if (dto.status && dto.status !== member.status) {
+        accessChanged = true;
         await this.audit.record(
           actor,
           {
@@ -104,6 +110,8 @@ export class MembersService {
       });
       return toMemberDto(updated);
     });
+    if (accessChanged) this.emitAccessChanged(actor.organizationId, updated.id);
+    return updated;
   }
 
   async remove(actor: RequestActor, memberId: string): Promise<void> {
@@ -128,6 +136,14 @@ export class MembersService {
         tx,
       );
     });
+    this.emitAccessChanged(actor.organizationId, memberId);
+  }
+
+  private emitAccessChanged(organizationId: string, memberId: string) {
+    this.events.emit(AccessEvents.memberChanged, {
+      organizationId,
+      memberId,
+    } satisfies MemberChangedEvent);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Injectable, Module } from '@nestjs/common';
+import { type ExecutionContext, Injectable, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -13,6 +13,11 @@ import { RedisThrottlerStorage } from './redis-throttler.storage.js';
  */
 @Injectable()
 class TrackerThrottlerGuard extends ThrottlerGuard {
+  // Global guards also wrap realtime message handlers, which have no HTTP request.
+  protected override shouldSkip(context: ExecutionContext): Promise<boolean> {
+    return Promise.resolve(context.getType() !== 'http');
+  }
+
   protected override getTracker(req: Record<string, unknown>): Promise<string> {
     const { ip, clientIp } = req as unknown as Request;
     const body = (req as { body?: unknown }).body as Record<string, unknown> | undefined;

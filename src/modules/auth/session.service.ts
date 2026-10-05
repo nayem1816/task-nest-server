@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
+import { AccessEvents, type SessionsRevokedEvent } from '../../common/events/access.events.js';
 import { generateOpaqueToken, hashOpaqueToken } from '../../common/crypto/opaque-token.js';
 import type { Env } from '../../config/env.js';
 import type { Session } from '../../generated/prisma/client.js';
@@ -36,6 +38,7 @@ export class SessionService {
     private readonly prisma: PrismaService,
     @Inject(REDIS) private readonly redis: Redis,
     private readonly logger: PinoLogger,
+    private readonly events: EventEmitter2,
     config: ConfigService<Env, true>,
   ) {
     this.logger.setContext(SessionService.name);
@@ -175,6 +178,7 @@ export class SessionService {
     const pipeline = this.redis.pipeline();
     for (const id of sessionIds) pipeline.set(revokedKey(id), '1', 'EX', this.accessTtlSeconds);
     await pipeline.exec();
+    this.events.emit(AccessEvents.sessionsRevoked, { sessionIds } satisfies SessionsRevokedEvent);
   }
 }
 

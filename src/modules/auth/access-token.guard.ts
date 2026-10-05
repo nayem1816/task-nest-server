@@ -19,6 +19,10 @@ export class AccessTokenGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Global guards also run for realtime messages; the gateway authenticates
+    // the socket once, in its handshake.
+    if (context.getType() !== 'http') return true;
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [
       context.getHandler(),
       context.getClass(),
@@ -33,7 +37,7 @@ export class AccessTokenGuard implements CanActivate {
     if (!claims) throw AuthErrors.unauthenticated();
     if (await this.sessions.isAccessRevoked(claims.sessionId)) throw AuthErrors.sessionExpired();
 
-    req.auth = claims;
+    req.auth = { userId: claims.userId, sessionId: claims.sessionId };
     return true;
   }
 }
