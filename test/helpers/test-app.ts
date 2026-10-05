@@ -4,11 +4,13 @@ import type { Redis } from 'ioredis';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../../src/app.module.js';
 import { configureApp } from '../../src/configure-app.js';
+import { AI_PROVIDER } from '../../src/modules/ai/ai.types.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { MailService } from '../../src/infrastructure/mail/mail.service.js';
 import type { OutgoingMail } from '../../src/infrastructure/mail/mail.types.js';
 import { RATE_LIMIT_KEY_PREFIX } from '../../src/infrastructure/rate-limit/redis-throttler.storage.js';
 import { REDIS } from '../../src/infrastructure/redis/redis.module.js';
+import { ScriptedAiProvider } from './scripted-ai.js';
 
 /** Captures outgoing email instead of queueing it. */
 export class MailOutbox {
@@ -33,14 +35,20 @@ export interface TestApp {
   prisma: PrismaService;
   redis: Redis;
   outbox: MailOutbox;
+  /** The model every suite talks to; script its answers per test. */
+  ai: ScriptedAiProvider;
   resetRateLimits(): Promise<void>;
 }
 
 export async function createTestApp(): Promise<TestApp> {
   const outbox = new MailOutbox();
+  const ai = new ScriptedAiProvider();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(MailService)
     .useValue(outbox)
+    // Never the real provider: a developer's .env key must not make tests spend tokens.
+    .overrideProvider(AI_PROVIDER)
+    .useValue(ai)
     .compile();
 
   const app = moduleRef.createNestApplication<INestApplication<App>>({ bufferLogs: true });
@@ -55,6 +63,7 @@ export async function createTestApp(): Promise<TestApp> {
     prisma: app.get(PrismaService),
     redis,
     outbox,
+    ai,
     async resetRateLimits() {
       const keys = await redis.keys(`${RATE_LIMIT_KEY_PREFIX}*`);
       if (keys.length > 0) await redis.del(...keys);

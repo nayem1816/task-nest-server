@@ -182,6 +182,38 @@ to gain that way.
 
 **Emails typed into the chat are claims, not proof.** See ADR-012.
 
+## AI provider
+
+Everything that talks to a model goes through `AiService`
+(`src/modules/ai`). Callers use provider-neutral types (`AiMessage`,
+`AiTool`, `GenerateResult`); the Gemini adapter is the only file that imports
+the vendor SDK.
+
+`AiService` adds, for every call:
+
+- a timeout (`AI_TIMEOUT_MS`, default 30s),
+- one retry with a short pause for rate limits, 5xx and timeouts (not for
+  rejected requests),
+- errors translated into our codes (`AI_NOT_CONFIGURED`, `AI_TIMEOUT`,
+  `AI_RATE_LIMITED`, `AI_BAD_REQUEST`, `AI_UNAVAILABLE`) with a message a
+  user can read; the vendor's detail goes to the logs only,
+- an `AiUsage` row (feature, model, tokens, latency, ok or error code). Prompts
+  and replies are not stored there.
+
+Model names live in configuration (`AI_CHAT_MODEL`, `AI_EMBEDDING_MODEL`),
+because providers retire models on their own schedule. Embeddings are 768
+dimensions and normalized, since the knowledge base's vector column has that
+size. Without `GEMINI_API_KEY` the API still starts and `GET /ai/status`
+says AI is not set up.
+
+Tool calls carry an opaque `signature` that must be sent back with the call
+on the next turn (Gemini's thought signature). Agent code passes the model's
+`message` back into the history unchanged rather than rebuilding it.
+
+Tests never call a real model: the test app replaces the provider with a
+scripted one. `npx tsx scripts/ai-smoke.ts` checks the real adapter (plain
+reply, tool round trip, embedding) with the key in `.env`.
+
 ## Configuration
 
 `src/config/env.ts` is the single source of truth for environment variables.

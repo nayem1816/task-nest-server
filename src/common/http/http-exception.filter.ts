@@ -52,7 +52,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const { status, body } = toErrorBody(exception);
     body.error.requestId = req.id;
 
-    if (status >= 500) {
+    // An AppException is a failure we anticipated and already described (an
+    // AI provider outage, say); the code that threw it logs what matters.
+    if (status >= 500 && !(exception instanceof AppException)) {
       this.logger.error({ err: exception, path: req.originalUrl }, 'Unhandled request error');
     }
 

@@ -8,6 +8,7 @@ import { MailModule } from './infrastructure/mail/mail.module.js';
 import { QueueModule } from './infrastructure/queue/queue.module.js';
 import { RateLimitModule } from './infrastructure/rate-limit/rate-limit.module.js';
 import { RedisModule } from './infrastructure/redis/redis.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ChannelsModule } from './modules/channels/channels.module.js';
@@ -33,6 +34,7 @@ import { WidgetModule } from './modules/widget/widget.module.js';
     QueueModule,
     MailModule,
     AuditModule,
+    AiModule,
     // Global guards run in import order: rate limiting, then authentication,
     // then the tenant and permission check, which needs the authenticated user.
     RateLimitModule,
